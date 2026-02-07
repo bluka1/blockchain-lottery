@@ -5,16 +5,101 @@
 }
 
 :root {
+  background-color: var(--background-color);
+  color: #ffffffde;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
   font-weight: 400;
+  line-height: 1.5;
+  scroll-behavior: smooth;
+  
+  --background-color: #333;
+  --border-color-dark: #8b7070d2;
+  --border-radius: 8px;
+  --nav-link-color: #ffffffde;
+  --nav-link-active-color: #fff;
+}
 
+#root {
   color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.header {
+  align-items: center;
+  border-bottom: 1px solid var(--border-color-dark);
+  color: var(--nav-link-color);
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.app-name {
+  color: var(--nav-link-active-color);
+  font-size: 20px;
+  font-weight: bold;
+  margin-left: 16px;
+  text-transform: capitalize;
+}
+
+.nav {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.link {
+  color: var(--nav-link-color);
+  font-size: 16px;
+  font-weight: normal;
+  text-decoration: none;
+  text-transform: capitalize;
+
+   &:hover {
+    cursor: pointer;
+    text-underline-offset: 4px;
+    text-decoration-thickness: 2px;
+  }
+}
+
+.active-link {
+  color: var(--nav-link-active-color);
+  font-weight: bold;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+
+.connect-link {
+  border: 1px solid var(--border-color-dark);
+  border-radius: var(--border-radius);
+  padding: 8px 16px;
+}
+
+.hero-link {
+  align-items: center;
+  display: flex;
+  text-decoration: none;
+
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+.hero-link > img {
+  width: 20px;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  padding: 24px;
+}
+
+.footer {
+  border-top: 1px solid var(--border-color-dark);
+  padding: 12px 24px;
 }

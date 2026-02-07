@@ -1,0 +1,195 @@
+.history-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  margin: 0 auto;
+  max-width: 1400px;
+  padding: 24px;
+  width: 100%;
+}
+
+.history-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.history-title {
+  color: var(--text-primary);
+  font-size: 48px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.history-subtitle {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin: 0;
+}
+
+.history-content {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 400px;
+}
+
+.history-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.section-title {
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.rounds-table {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color-light);
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.rounds-table thead {
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+.rounds-table th {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 16px;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.rounds-table td {
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 16px;
+}
+
+.rounds-table tbody tr {
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+.rounds-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.round-id {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.winning-combo {
+  display: flex;
+  gap: 8px;
+}
+
+.number-badge {
+  background-color: var(--primary-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+}
+
+.tx-link {
+  border: 1px solid var(--border-color-light);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  font-size: 18px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.tx-link:hover {
+  background-color: var(--card-background);
+  color: var(--text-primary);
+}
+
+.history-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.stat-card {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color-light);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.stat-title {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.frequency-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.frequency-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.frequency-label {
+  color: var(--text-secondary);
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  font-size: 14px;
+  gap: 24px;
+}
+
+.frequency-count {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.verified-card {
+  background-color: var(--primary-color);
+  border: none;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.verified-title {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.verified-text {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}

@@ -10,7 +10,7 @@ export function LayoutPage({children}: {children: React.ReactNode}) {
         <nav className="nav">
           <NavLink to="/" className={({isActive}) => isActive ? 'link active-link' : 'link'}>How it works</NavLink>
           <NavLink to="/history" className={({isActive}) => isActive ? 'link active-link' : 'link'}>History</NavLink>
-          <NavLink to="/" className='connect-link link'>Connect wallet</NavLink>
+          <button className='connect-button'>Connect wallet</button>
         </nav>
       </header>
       <main className="main">

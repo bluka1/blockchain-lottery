@@ -7,12 +7,8 @@ function App() {
   return (
     <LayoutPage>
       <Routes>
-        <Route path="/">
-          <Route index element={<HomePage />} />
-        </Route>
-        <Route path="/history">
-          <Route index element={<HistoryPage />} />
-        </Route>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/history" element={<HistoryPage />} />
       </Routes>
     </LayoutPage>
   )

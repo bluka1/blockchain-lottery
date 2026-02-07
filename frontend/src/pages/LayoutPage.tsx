@@ -8,7 +8,7 @@ export function LayoutPage({children}: {children: React.ReactNode}) {
           <h1 className="app-name">Blockchain lottery</h1>
         </Link>
         <nav className="nav">
-          <NavLink to="/" className={({isActive}) => isActive ? 'link active-link' : 'link'}>How it works</NavLink>
+          <NavLink to="/" className={({isActive}) => isActive ? 'link active-link' : 'link'}>Home</NavLink>
           <NavLink to="/history" className={({isActive}) => isActive ? 'link active-link' : 'link'}>History</NavLink>
           <button className='connect-button'>Connect wallet</button>
         </nav>

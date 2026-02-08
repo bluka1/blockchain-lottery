@@ -1,5 +1,6 @@
 import { FeatureCard } from "../components/FeatureCard";
 import { TimerToNextDraw } from "../components/TimerToNextDraw";
+import { useWeb3Context } from "../providers/Web3ContextProvider";
 import "./home.css"
 
 const featuresData = [
@@ -21,6 +22,7 @@ const featuresData = [
 ]
 
 export function HomePage() {
+  const { wallet } = useWeb3Context();
   return (
     <article className="home-page">
 
@@ -40,12 +42,15 @@ export function HomePage() {
         Verifiable randomness, instant payouts, zero house edge.
       </p>
 
-      <button className="connect-button">
-        <span className="">🚀</span>
-        Connect Wallet to Play
-      </button>
-
-      <p className="connect-info">REQUIRES METAMASK</p>
+      {!wallet && 
+        <>
+          <button className="connect-button">
+            <span className="">🚀</span>
+            Connect Wallet to Play
+          </button>
+          <p className="connect-info">REQUIRES METAMASK</p>
+        </>
+      }
 
       <TimerToNextDraw />
 

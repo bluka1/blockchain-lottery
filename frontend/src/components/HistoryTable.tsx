@@ -6,35 +6,35 @@ const tableHeadings = ["ROUND ID", "DATE", "WINNING COMBO", "PLAYERS", "TX"]
 const tableData = [
   {
     roundId: "#1025",
-    date: "Oct 27, 2023",
+    date: "Jan 27, 2026",
     winningCombo: [4, 12, 19, 22, 45],
     players: 1,
     tx: "#"
   },
   {
     roundId: "#1024",
-    date: "Oct 24, 2023",
+    date: "Jan 24, 2026",
     winningCombo: [4, 12, 19, 22, 45],
     players: 1,
     tx: "#"
   },
   {
     roundId: "#1023",
-    date: "Oct 21, 2023",
+    date: "Jan 21, 2026",
     winningCombo: [1, 9, 14, 33, 41],
     players: 1,
     tx: "#"
   },
   {
     roundId: "#1022",
-    date: "Oct 18, 2023",
+    date: "Jan 18, 2026",
     winningCombo: [1, 9, 14, 33, 41],
     players: 1,
     tx: "#"
   },
   {
     roundId: "#1021",
-    date: "Oct 15, 2023",
+    date: "Jan 15, 2026",
     winningCombo: [1, 9, 14, 33, 41],
     players: 1,
     tx: "#"

@@ -5,19 +5,19 @@ Blockchain projekt koji implementira decentraliziranu lutriju na Ethereum testne
 ## Tech Stack
 
 - Solidity (Ethereum testnet)
-- React + Vite
-- ethers.js / viem
+- React + ethers.js + Vite
+- Hardhar + ethers.js
 - Randomness Oracle (Chainlink VRF)
 - Node.js (backend analitika)
 
 ## Struktura projekta
 
-```
+```md
 .
-├── smart-contracts/
-├── frontend/
 ├── backend/
-└── docs/
+├── docs/
+├── frontend/
+└── smart-contracts/
 ```
 
 ## Kako pokrenuti?
@@ -33,6 +33,11 @@ Blockchain projekt koji implementira decentraliziranu lutriju na Ethereum testne
 - `cd backend`
 - `npm ci`
 - `npm run start`
+
+### Lokalni blockchain
+
+- `cd smart-contracts`
+- `npx hardhat node`
 
 ## Docs
 

@@ -16,9 +16,6 @@ export function HistoryPage() {
 
       <div className="history-content">
         <section className="history-main">
-          <div className="section-header">
-            <h2 className="section-title">Recent Rounds</h2>
-          </div>
           <HistoryTable />
         </section>
 

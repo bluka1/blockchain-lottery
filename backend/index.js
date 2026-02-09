@@ -1,16 +1,21 @@
 const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin");
+require("dotenv").config();
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Firebase init
-const serviceAccount = require("./serviceAccountKey.json");
+if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  throw new Error("Missing GOOGLE_APPLICATION_CREDENTIALS env variable");
+}
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert(
+    require(path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS))
+  ),
 });
 
 const db = admin.firestore();
@@ -18,20 +23,6 @@ const db = admin.firestore();
 // Hello world
 app.get("/", (req, res) => {
   res.json({ message: "Hello World API" });
-});
-
-// Firestore test
-app.get("/firestore-test", async (req, res) => {
-  try {
-    await db.collection("test").doc("ping").set({
-      ok: true,
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    res.json({ message: "Firestore write OK" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Firestore failed" });
-  }
 });
 
 const PORT = 4000;

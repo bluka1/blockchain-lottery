@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.30;
 
-contract Lottery50_40_10 {
+contract Lottery {
     address public owner;
     address public oracle; // oracle koji dostavlja winningNumbers + randomSeed
 
@@ -100,8 +100,8 @@ contract Lottery50_40_10 {
 
     function payoutWinners() external payable nonReentrant {
         require(phase == Phase.Drawn, "Wrong phase");
-        uint256 n = participants.length;
-        require(n > 0, "No participants");
+        uint256 participantCount = participants.length;
+        require(participantCount > 0, "No participants");
 
         uint256 pool = address(this).balance;
         require(pool > 0, "No funds");
@@ -111,21 +111,21 @@ contract Lottery50_40_10 {
         uint256 ownerFee = pool - jackpotPool - secondaryPool;
 
         uint8 maxMatches = 0;
-        uint8[] memory matches = new uint8[](n);
+        uint8[] memory matches = new uint8[](participantCount);
 
-        for (uint256 i = 0; i < n; i++) {
-            address p = participants[i];
-            if (entries[p].exists) {
-                uint8 m = _countMatches(entries[p].numbers, winningNumbers);
+        for (uint256 i = 0; i < participantCount; i++) {
+            address participant = participants[i];
+            if (entries[participant].exists) {
+                uint8 m = _countMatches(entries[participant].numbers, winningNumbers);
                 matches[i] = m;
                 if (m > maxMatches) maxMatches = m;
             }
         }
 
-        address[] memory jackpotWinnersTemp = new address[](n);
+        address[] memory jackpotWinnersTemp = new address[](participantCount);
         uint256 jackpotCount = 0;
 
-        for (uint256 i = 0; i < n; i++) {
+        for (uint256 i = 0; i < participantCount; i++) {
             if (matches[i] == maxMatches) {
                 jackpotWinnersTemp[jackpotCount] = participants[i];
                 jackpotCount++;
@@ -139,15 +139,20 @@ contract Lottery50_40_10 {
             require(ok, "Jackpot transfer failed");
         }
 
-        uint256 secondaryCount = n / 10; // 10%
+        uint256 secondaryCount = participantCount / 10; // 10%
         if (secondaryCount == 0) secondaryCount = 1;
 
-        bool[] memory isJackpot = new bool[](n);
-        for (uint256 i = 0; i < n; i++) {
+        uint256 maxSecondaryWinners = 20; // razuman gornji limit
+        if (secondaryCount > maxSecondaryWinners) {
+             secondaryCount = maxSecondaryWinners;
+        }
+
+        bool[] memory isJackpot = new bool[](participantCount);
+        for (uint256 i = 0; i < participantCount; i++) {
             if (matches[i] == maxMatches) isJackpot[i] = true;
         }
 
-        bool[] memory picked = new bool[](n);
+        bool[] memory picked = new bool[](participantCount);
         address[] memory secondaryWinners = new address[](secondaryCount);
 
         uint256 pickedCount = 0;
@@ -159,7 +164,7 @@ contract Lottery50_40_10 {
             require(safety < 5000, "Selection loop guard"); // safety for demo
 
             seed = uint256(keccak256(abi.encodePacked(seed, pickedCount, address(this))));
-            uint256 idx = seed % n;
+            uint256 idx = seed % participantCount;
 
             if (picked[idx]) continue;
 

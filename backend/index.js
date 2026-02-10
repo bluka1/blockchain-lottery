@@ -1,10 +1,11 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin");
-require("dotenv").config();
-const path = require("path");
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
@@ -24,18 +25,13 @@ admin.initializeApp({
   }),
 });
 
-
 const db = admin.firestore();
 
-// Hello world
-app.get("/", (req, res) => {
-  res.json({ message: "Hello World API" });
+// Health check
+app.get("/health", (req, res) => {
+  res.json({ ok: true });
 });
 
-const PORT = 4000;
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
-});
 // Create user
 app.post("/api/users", async (req, res) => {
   try {
@@ -43,11 +39,11 @@ app.post("/api/users", async (req, res) => {
 
     if (!user_id || !name || !surname || !wallet_address) {
       return res.status(400).json({
+        ok: false,
         error: "Missing required fields: user_id, name, surname, wallet_address",
       });
     }
 
-    // users collection, doc id = user_id
     await db.collection("users").doc(user_id).set({
       picture: picture ?? "",
       name,
@@ -59,38 +55,73 @@ app.post("/api/users", async (req, res) => {
     return res.status(201).json({ ok: true, user_id });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: "Failed to create user" });
+    return res.status(500).json({ ok: false, error: "Failed to create user" });
   }
 });
+
 // Add lottery record
 app.post("/api/lotteries", async (req, res) => {
   try {
-    const { date, amount_collected, participants, winners } = req.body;
+    const { date, amount_collected, participants, winners, winningCombo, tx } = req.body;
 
     if (!date || amount_collected === undefined || !participants || !winners) {
       return res.status(400).json({
+        ok: false,
         error: "Missing required fields: date, amount_collected, participants, winners",
       });
     }
 
     if (!Array.isArray(participants) || !Array.isArray(winners)) {
       return res.status(400).json({
+        ok: false,
         error: "participants and winners must be arrays",
       });
     }
 
-    // lotteries collection (auto ID)
     const docRef = await db.collection("lotteries").add({
-      date, // npr "2026-02-08"
-      amount_collected, // npr "0.25" ili broj
-      participants, // npr ["0xabc...", "0xdef..."]
-      winners, // npr ["0xabc..."]
+      date, // "YYYY-MM-DD"
+      amount_collected,
+      participants,
+      winners,
+      winningCombo: Array.isArray(winningCombo) ? winningCombo : undefined,
+      tx: typeof tx === "string" ? tx : undefined,
       created_at: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     return res.status(201).json({ ok: true, lottery_id: docRef.id });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: "Failed to add lottery record" });
+    return res.status(500).json({ ok: false, error: "Failed to add lottery record" });
   }
+});
+
+app.get("/api/lotteries/history", async (req, res) => {
+  try {
+    const snapshot = await db
+      .collection("lotteries")
+      .orderBy("date", "desc")
+      .limit(50)
+      .get();
+
+    const items = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        roundId: doc.id,
+        date: data.date,
+        winningCombo: data.winningCombo ?? [],
+        players: Array.isArray(data.participants) ? data.participants.length : 0,
+        tx: data.tx ?? "#",
+      };
+    });
+
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to fetch history" });
+  }
+});
+
+const PORT = process.env.PORT;
+app.listen(PORT, () => {
+  console.log(`Backend running on http://localhost:${PORT}`);
 });

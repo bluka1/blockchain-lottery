@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { ethers, BrowserProvider, Contract } from "ethers";
+import { CONTRACT_CONFIG } from "../config/contract";
 
 interface Web3ContextType {
   wallet: string | null;
@@ -6,6 +8,9 @@ interface Web3ContextType {
   disconnectWallet: () => void;
   chainId: string | null;
   isMetaMaskInstalled: boolean;
+  provider: BrowserProvider | null;
+  signer: ethers.Signer | null;
+  contract: Contract | null;
 }
 
 const initialContext: Web3ContextType = {
@@ -13,7 +18,10 @@ const initialContext: Web3ContextType = {
   connectWallet: async () => {},
   disconnectWallet: () => {},
   chainId: null,
-  isMetaMaskInstalled: false
+  isMetaMaskInstalled: false,
+  provider: null,
+  signer: null,
+  contract: null,
 };
 
 export const Web3Context = createContext<Web3ContextType>(initialContext);
@@ -49,9 +57,15 @@ export const Web3ContextProvider = ({ children }: {children: React.ReactNode}) =
   const [wallet, setWallet] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
   const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState(false);
+  const [provider, setProvider] = useState<BrowserProvider | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  const [contract, setContract] = useState<Contract | null>(null);
 
   const disconnectWallet = useCallback(() => {
     setWallet(null);
+    setProvider(null);
+    setSigner(null);
+    setContract(null);
   }, []);
 
   const connectWallet = useCallback(async () => {
@@ -144,12 +158,51 @@ export const Web3ContextProvider = ({ children }: {children: React.ReactNode}) =
     };
   }, [disconnectWallet]);
 
+  // initialize provider, signer, and contract when wallet is connected
+  useEffect(() => {
+    const initializeContract = async () => {
+      const metaMaskProvider = getMetaMaskProvider();
+
+      if (!wallet || !metaMaskProvider) {
+        setProvider(null);
+        setSigner(null);
+        setContract(null);
+        return;
+      }
+
+      try {
+        const ethersProvider = new BrowserProvider(metaMaskProvider);
+        setProvider(ethersProvider);
+
+        const ethersSigner = await ethersProvider.getSigner();
+        setSigner(ethersSigner);
+
+        const lotteryContract = new Contract(
+          CONTRACT_CONFIG.address,
+          CONTRACT_CONFIG.abi,
+          ethersSigner
+        );
+        setContract(lotteryContract);
+      } catch (error) {
+        console.error('Error initializing contract:', error);
+        setProvider(null);
+        setSigner(null);
+        setContract(null);
+      }
+    };
+
+    initializeContract();
+  }, [wallet]);
+
   const contextValue: Web3ContextType = {
     wallet,
     connectWallet,
     disconnectWallet,
     chainId,
     isMetaMaskInstalled,
+    provider,
+    signer,
+    contract,
   };
 
   return <Web3Context.Provider value={contextValue}>{children}</Web3Context.Provider>;

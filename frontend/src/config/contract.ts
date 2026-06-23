@@ -1,10 +1,10 @@
 import lotteryAbi from "./lottery-abi.json";
 
 export const CONTRACT_CONFIG = {
-  address: "0x0bb81fFBf48D83D653b76FcAb798c8403265C42b",
+  address: import.meta.env.VITE_CONTRACT_ADDRESS ?? "0x6bb457c06d950aE273fBE89e32Dff89AaA2AfF0F",
   abi: lotteryAbi,
-  chainId: 11155111, // Sepolia testnet
-  chainName: "Sepolia"
+  chainId: Number(import.meta.env.VITE_CHAIN_ID ?? 11155111),
+  chainName: import.meta.env.VITE_CHAIN_NAME ?? "Sepolia",
 } as const;
 
 export const Phase = {

@@ -15,19 +15,25 @@
 
   --background-color: #333;
   --border-color-dark: #8b7070d2;
-  --border-color-light: rgba(255, 255, 255, 0.1);
+  --border-color-light: #ffffff1A;
   --border-radius: 8px;
   --nav-link-color: #ffffffde;
   --nav-link-active-color: #fff;
   --primary-color: #244f93;
   --primary-color-hover: #286cfe;
   --highlight-color: #2787f5;
+  --highlight-bg: #2787f51A;
+  --highlight-border: #2787f54D;
   --error-color: #ef4444;
+  --error-bg: #ef44441A;
+  --error-border: #ef44444D;
   --success-color: #22c55e;
+  --success-bg: #22c55e1A;
+  --success-border: #22c55e4D;
   --text-primary: #fff;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-tertiary: rgba(255, 255, 255, 0.5);
-  --card-background: rgba(255, 255, 255, 0.05);
+  --text-secondary: #ffffffB3;
+  --text-tertiary: #ffffff80;
+  --card-background: #ffffff0D;
 }
 
 #root {

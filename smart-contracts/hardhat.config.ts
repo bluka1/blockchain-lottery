@@ -1,4 +1,5 @@
 import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+import "@nomicfoundation/hardhat-ethers";
 import { configVariable, defineConfig } from "hardhat/config";
 
 export default defineConfig({
@@ -7,6 +8,12 @@ export default defineConfig({
     profiles: {
       default: {
         version: "0.8.28",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
       },
       production: {
         version: "0.8.28",
@@ -20,6 +27,11 @@ export default defineConfig({
     },
   },
   networks: {
+    localhost: {
+      type: "http",
+      chainType: "l1",
+      url: "http://127.0.0.1:8545",
+    },
     hardhatMainnet: {
       type: "edr-simulated",
       chainType: "l1",

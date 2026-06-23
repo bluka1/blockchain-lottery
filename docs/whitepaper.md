@@ -64,19 +64,21 @@ Faze su implementirane kao stanje (state machine) unutar smart contracta.
 
 ## 4. Mehanizam izvlačenja
 
-Dobitna kombinacija generira se korištenjem **randomness oraclea** (npr. Chainlink VRF ili sličnog rješenja).
+Dobitna kombinacija generira se korištenjem **Chainlink VRF-a (Verifiable Random Function)**.
 
 Proces:
 
-1. Smart contract šalje zahtjev oracleu
-2. Oracle generira 5 kriptografski sigurnih random brojeva od 1 do 50
-3. Rezultat se trajno zapisuje na blockchain
+1. Kada istekne vrijeme kruga, Chainlink Automation poziva `performUpkeep`, koji zatvara krug i šalje zahtjev VRF-u
+2. VRF dostavlja kriptografski sigurne slučajne vrijednosti, iz kojih ugovor generira 5 jedinstvenih brojeva od 1 do 50
+3. Rezultat (dobitni brojevi i seed za odabir sekundarnih dobitnika) trajno se zapisuje na blockchain
 
 Ovim pristupom osigurava se:
 
 * Nemogućnost manipulacije
 * Transparentnost i provjerljivost
 * Povjerenje bez centralnog autoriteta
+
+Cijeli životni ciklus kruga (zatvaranje → zahtjev VRF-u → isplata → novi krug) pokreće se automatski putem **Chainlink Automation-a**, bez ručne intervencije. Ako automatizacija zakaže, vlasnik ugovora ima ručne fallback funkcije, a postoji i mehanizam za otkazivanje zaglavljenog VRF zahtjeva nakon timeouta.
 
 ---
 
@@ -101,8 +103,10 @@ Time se osigurava da sustav može autonomno izvršiti sve isplate bez vanjske in
 
 ### 5.3 Isplate
 
-* isplate se izvršavaju automatski iz smart contracta
-* nema ručne intervencije ili centralne kontrole
+* nakon izvlačenja ugovor automatski **izračunava i kreditira** nagrade svim dobitnicima (jackpot, sekundarni dobitnici i naknada za troškove)
+* dobitnici svoje nagrade preuzimaju pozivom funkcije `withdraw()` (pull-payment obrazac)
+* ovaj pristup sprječava da jedan dobitnik koji ne može primiti sredstva blokira isplatu svima ostalima
+* nema ručne intervencije ili centralne kontrole nad izračunom dobitnika
 
 ---
 

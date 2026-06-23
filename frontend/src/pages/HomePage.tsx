@@ -1,6 +1,11 @@
+import { useState } from "react";
 import { FeatureCard } from "../components/FeatureCard";
 import { TimerToNextDraw } from "../components/TimerToNextDraw";
+import { WithdrawCard } from "../components/WithdrawCard";
 import { useWeb3Context } from "../providers/Web3ContextProvider";
+import { useLotteryData } from "../hooks/useLotteryData";
+import { useLotteryContract } from "../hooks/useLotteryContract";
+import { getPhaseName } from "../config/contract";
 import "./home.css"
 
 const featuresData = [
@@ -22,14 +27,47 @@ const featuresData = [
 ]
 
 export function HomePage() {
-  const { wallet } = useWeb3Context();
+  const { wallet, connectWallet } = useWeb3Context();
+  const lotteryData = useLotteryData(wallet);
+  const { participate, txState, resetTxState } = useLotteryContract();
+
+  const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleNumberClick = (num: number) => {
+    if (selectedNumbers.includes(num)) {
+      setSelectedNumbers(selectedNumbers.filter(n => n !== num));
+    } else if (selectedNumbers.length < 5) {
+      setSelectedNumbers([...selectedNumbers, num]);
+    }
+  };
+
+  const handleParticipate = async () => {
+    if (selectedNumbers.length !== 5) {
+      alert("Please select exactly 5 numbers");
+      return;
+    }
+
+    await participate(selectedNumbers);
+
+    if (!txState.error) {
+      setShowSuccess(true);
+      setSelectedNumbers([]);
+      setTimeout(() => {
+        setShowSuccess(false);
+        resetTxState();
+      }, 5000);
+    }
+  };
+
+  const phaseText = lotteryData.phase !== null ? getPhaseName(lotteryData.phase) : "loading...";
+  const roundText = lotteryData.currentRound !== null ? `#${lotteryData.currentRound}` : "#--";
+
   return (
     <article className="home-page">
-
-      {/* TODO: hardcoded until we get information from the contract */}
       <div className="status-badge">
         <span className="status-indicator"></span>
-        STATUS: ROUND #42 OPEN
+        STATUS: ROUND {roundText} {phaseText}
       </div>
 
       <h1 className="hero-title">
@@ -42,17 +80,76 @@ export function HomePage() {
         Verifiable randomness, instant payouts, zero house edge.
       </p>
 
-      {!wallet && 
+      {lotteryData.jackpot && (
+        <div className="jackpot-display">
+          <span className="jackpot-label">Current Jackpot:</span>
+          <span className="jackpot-amount">{parseFloat(lotteryData.jackpot).toFixed(4)} ETH</span>
+        </div>
+      )}
+
+      {!wallet ? (
         <>
-          <button className="connect-button">
-            <span className="">🚀</span>
+          <button className="connect-button" onClick={connectWallet}>
+            <span>🚀</span>
             Connect Wallet to Play
           </button>
           <p className="connect-info">REQUIRES METAMASK</p>
         </>
-      }
+      ) : (
+        <div className="participate-section">
+          <h2>Select Your Numbers (1-50)</h2>
 
-      <TimerToNextDraw />
+          {lotteryData.userEntry?.exists ? (
+            <div className="already-participated">
+              <p>✅ You've already participated in this round!</p>
+              <p>Your numbers: {lotteryData.userEntry.numbers.join(", ")}</p>
+            </div>
+          ) : (
+            <>
+              <div className="number-grid">
+                {Array.from({ length: 50 }, (_, i) => i + 1).map(num => (
+                  <button
+                    key={num}
+                    className={`number-button ${selectedNumbers.includes(num) ? 'selected' : ''}`}
+                    onClick={() => handleNumberClick(num)}
+                    disabled={txState.loading}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+
+              <div className="selected-numbers">
+                <p>Selected: {selectedNumbers.join(", ") || "None"} ({selectedNumbers.length}/5)</p>
+              </div>
+
+              <button
+                className="participate-button"
+                onClick={handleParticipate}
+                disabled={selectedNumbers.length !== 5 || txState.loading}
+              >
+                {txState.loading ? "Processing..." : "Participate (0.005 ETH)"}
+              </button>
+
+              {txState.error && (
+                <div className="error-message">
+                  ❌ {txState.error}
+                </div>
+              )}
+
+              {showSuccess && (
+                <div className="success-message">
+                  ✅ Successfully participated! TX: {txState.txHash?.substring(0, 10)}...
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {wallet && <WithdrawCard />}
+
+      {lotteryData.nextDrawTime && <TimerToNextDraw targetTimestamp={lotteryData.nextDrawTime} />}
 
       <section className="features">
         {featuresData.map((feature) => (

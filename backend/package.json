@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "listen": "node src/services/contractListener.js",
+    "dev:listen": "nodemon src/services/contractListener.js"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +16,7 @@
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
+    "ethers": "^6.16.0",
     "express": "^5.2.1",
     "firebase-admin": "^13.6.1"
   },

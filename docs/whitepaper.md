@@ -19,6 +19,7 @@ Projekt nema cilj simulirati realnu financijsku lutriju, već služi kao edukati
 * pametni ugovor
 * web korisničko sučelje
 * off-chain analitički sustav
+* off-chain keeper servis koji automatizira životni ciklus pojedinog kruga
 
 ## 3. Pravila lutrije
 
@@ -68,7 +69,7 @@ Dobitna kombinacija generira se korištenjem **Chainlink VRF-a (Verifiable Rando
 
 Proces:
 
-1. Kada istekne vrijeme kruga, Chainlink Automation poziva `performUpkeep`, koji zatvara krug i šalje zahtjev VRF-u
+1. Kada istekne vrijeme kruga, keeper servis poziva `performUpkeep`, koji zatvara krug i šalje zahtjev VRF-u
 2. VRF dostavlja kriptografski sigurne slučajne vrijednosti, iz kojih ugovor generira 5 jedinstvenih brojeva od 1 do 50
 3. Rezultat (dobitni brojevi i seed za odabir sekundarnih dobitnika) trajno se zapisuje na blockchain
 
@@ -78,7 +79,7 @@ Ovim pristupom osigurava se:
 * Transparentnost i provjerljivost
 * Povjerenje bez centralnog autoriteta
 
-Cijeli životni ciklus kruga (zatvaranje → zahtjev VRF-u → isplata → novi krug) pokreće se automatski putem **Chainlink Automation-a**, bez ručne intervencije. Ako automatizacija zakaže, vlasnik ugovora ima ručne fallback funkcije, a postoji i mehanizam za otkazivanje zaglavljenog VRF zahtjeva nakon timeouta.
+Ugovor je kompatibilan s **Chainlink Automation** standardom — implementira `checkUpkeep`/`performUpkeep`. Cijeli životni ciklus kruga (zatvaranje → zahtjev VRF-u → isplata → novi krug) pokreće se automatski, bez ručne intervencije, putem **off-chain keeper servisa** koji periodički provjerava `checkUpkeep` i izvršava `performUpkeep` (vidi §6.4). Pristup je odabran jer je Chainlink Automation usluga povučena na testnetima; ista `checkUpkeep`/`performUpkeep` logika ostaje upotrebljiva i s Chainlink Automationom ili migracijom na CRE. Ako automatizacija zakaže, vlasnik ugovora ima ručne fallback funkcije, a postoji i mehanizam za otkazivanje zaglavljenog VRF zahtjeva nakon timeouta (koji keeper poziva automatski).
 
 ---
 
@@ -165,6 +166,20 @@ Primjeri analitika:
 
 Backend koristi blockchain evente kao izvor podataka i nema mogućnost utjecaja na ishod lutrije.
 
+### 6.4 Keeper servis (automatizacija)
+
+Keeper je zaseban off-chain proces koji automatizira napredovanje životnog ciklusa kruga. U pravilnim intervalima poziva `checkUpkeep`; kada ugovor signalizira da je akcija potrebna, keeper šalje `performUpkeep` transakciju.
+
+Karakteristike:
+
+* izveden kao samostalan worker, odvojen od API-ja i analitičkog listenera (jedinstvena odgovornost, izolacija ovlaštenog ključa)
+* potpisuje transakcije računom koji je ovlašten u ugovoru (vlasnik / registry), te troši ETH za gas
+* **bez utjecaja na ishod** — ne generira slučajnost niti bira dobitnike; samo "gura" korake koje ugovor ionako dopušta
+* mora postojati točno jedna aktivna instanca (više njih = konkurentne transakcije)
+* automatski otkazuje zaglavljeni VRF zahtjev nakon isteka timeouta i ponavlja izvlačenje
+
+Lokalni razvoj koristi ekvivalentni keeper koji dodatno simulira VRF i napredovanje vremena na lokalnom čvoru.
+
 ---
 
 ## 7. Sigurnost i ograničenja
@@ -173,6 +188,7 @@ Backend koristi blockchain evente kao izvor podataka i nema mogućnost utjecaja 
 * Izvodi se na testnetu
 * Nema stvarnu financijsku vrijednost
 * Smart contract neće biti auditiran za produkcijsku upotrebu
+* Napredovanje životnog ciklusa ovisi o off-chain keeper servisu (ovlašteni račun) — to je točka centralizacije, ali keeper ne može utjecati na slučajnost ni odabir dobitnika (oni su određeni Chainlink VRF-om i on-chain logikom); u najgorem slučaju (keeper nedostupan) krug čeka, a vlasnik ima ručne fallback funkcije
 
 ---
 

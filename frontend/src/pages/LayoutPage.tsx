@@ -2,7 +2,7 @@ import { NavLink, Link } from "react-router"
 import { useWeb3Context } from "../providers/Web3ContextProvider"
 
 export function LayoutPage({children}: {children: React.ReactNode}) {
-  const { connectWallet, wallet } = useWeb3Context();
+  const { connectWallet, disconnectWallet, wallet } = useWeb3Context();
 
   return (
     <>
@@ -15,7 +15,12 @@ export function LayoutPage({children}: {children: React.ReactNode}) {
           <NavLink to="/" className={({isActive}) => isActive ? 'link active-link' : 'link'}>Home</NavLink>
           <NavLink to="/history" className={({isActive}) => isActive ? 'link active-link' : 'link'}>History</NavLink>
           {!wallet && <button className='connect-button' onClick={connectWallet}>Connect wallet</button>}
-          {wallet && <p className="wallet-address">{wallet.substring(0, 6)}...{wallet.substring(wallet.length - 4)}</p>}
+          {wallet && (
+            <div className="wallet-info">
+              <p className="wallet-address">{wallet.substring(0, 6)}...{wallet.substring(wallet.length - 4)}</p>
+              <button className="disconnect-button" onClick={disconnectWallet}>Disconnect</button>
+            </div>
+          )}
         </nav>
       </header>
       <main className="main">

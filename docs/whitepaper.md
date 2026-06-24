@@ -19,6 +19,7 @@ Projekt nema cilj simulirati realnu financijsku lutriju, već služi kao edukati
 * pametni ugovor
 * web korisničko sučelje
 * off-chain analitički sustav
+* off-chain keeper servis koji automatizira životni ciklus pojedinog kruga
 
 ## 3. Pravila lutrije
 
@@ -29,8 +30,8 @@ Sudjelovanje u lutriji odvija se isključivo putem web aplikacije povezane s Eth
 Uvjeti sudjelovanja:
 
 * jedan wallet = jedna prijava po lutrijskom krugu
-* fiksni ulog od **0,0050 ETH ili otprilike 10 USD**
-* obavezan odabir **5/50 brojeva**
+* fiksni ulog od **0,0050 ETH**
+* obavezan odabir **5/50 brojeva** (svih 5 mora biti različito)
 
 Smart contract validira sve uvjete prije prihvaćanja prijave.
 
@@ -64,13 +65,13 @@ Faze su implementirane kao stanje (state machine) unutar smart contracta.
 
 ## 4. Mehanizam izvlačenja
 
-Dobitna kombinacija generira se korištenjem **randomness oraclea** (npr. Chainlink VRF ili sličnog rješenja).
+Dobitna kombinacija generira se korištenjem **Chainlink VRF-a (Verifiable Random Function)**.
 
 Proces:
 
-1. Smart contract šalje zahtjev oracleu
-2. Oracle generira 5 kriptografski sigurnih random brojeva od 1 do 50
-3. Rezultat se trajno zapisuje na blockchain
+1. Kada istekne vrijeme kruga, keeper servis poziva `performUpkeep`, koji zatvara krug i šalje zahtjev VRF-u
+2. VRF dostavlja kriptografski sigurne slučajne vrijednosti, iz kojih ugovor generira 5 jedinstvenih brojeva od 1 do 50
+3. Rezultat (dobitni brojevi i seed za odabir sekundarnih dobitnika) trajno se zapisuje na blockchain
 
 Ovim pristupom osigurava se:
 
@@ -78,31 +79,47 @@ Ovim pristupom osigurava se:
 * Transparentnost i provjerljivost
 * Povjerenje bez centralnog autoriteta
 
+Ugovor je kompatibilan s **Chainlink Automation** standardom — implementira `checkUpkeep`/`performUpkeep`. Cijeli životni ciklus kruga (zatvaranje → zahtjev VRF-u → isplata → novi krug) pokreće se automatski, bez ručne intervencije, putem **off-chain keeper servisa** koji periodički provjerava `checkUpkeep` i izvršava `performUpkeep` (vidi §6.4). Pristup je odabran jer je Chainlink Automation usluga povučena na testnetima; ista `checkUpkeep`/`performUpkeep` logika ostaje upotrebljiva i s Chainlink Automationom ili migracijom na CRE. Ako automatizacija zakaže, vlasnik ugovora ima ručne fallback funkcije, a postoji i mehanizam za otkazivanje zaglavljenog VRF zahtjeva nakon timeouta (koji keeper poziva automatski).
+
 ---
 
 ## 5. Podjela nagrada
 
-Ukupni nagradni fond sastoji se od svih prikupljenih uplata u jednom lutrijskom krugu.
+Nagradni fond jednog kruga čine sve prikupljene uplate tog kruga. Uplate se dijele u tri dijela: **50%** ide u jackpot, **40%** u sekundarni (lucky-draw) fond i **10%** za pokrivanje troškova. Jackpot dio dodatno uključuje i **akumulirani iznos** prenesen iz prethodnih krugova (vidi §5.4).
 
-### 5.1 Glavni dobitnik
+### 5.1 Glavni dobitnik (jackpot)
 
-* **50%** ukupnog fonda dodjeljuje se sudioniku koji je pogodio točnu dobitnu kombinaciju
-* u slučaju da nema točne kombinacije, može se primijeniti logika "najbliže kombinacije" (npr. najveći broj pogođenih brojeva)
+* **50%** kruga (uvećano za akumulirani jackpot) dodjeljuje se sudioniku koji je pogodio **svih 5** brojeva
+* ako ima više dobitnika s 5 pogodaka, jackpot se dijeli jednako među njima
+* ako **nitko** ne pogodi svih 5, jackpot se ne isplaćuje nego se prenosi (rollover) u sljedeći krug
 
-### 5.2 Sekundarni dobitnici
+### 5.2 Sekundarni dobitnici (lucky draw)
 
-* **40%** fonda raspodjeljuje se između **10–15% nasumično odabranih sudionika**
+* **40%** fonda raspodjeljuje se na **nasumično odabrane sudionike** (otprilike **10%** sudionika, najmanje 1, najviše 20)
+* odabir je **neovisan o broju pogođenih brojeva** — moguće je osvojiti i bez ijednog pogotka, a pogodak ne jamči nagradu
 * svaki sekundarni dobitnik dobiva jednak udio
 
-Odabir sekundarnih dobitnika također koristi randomness oracle kako bi se osigurala pravednost.
+Odabir sekundarnih dobitnika koristi seed iz Chainlink VRF-a kako bi se osigurala pravednost. Ako je jackpot osvojen, dobitnici jackpota se isključuju iz sekundarnog izvlačenja (osim ako nema dovoljno drugih sudionika).
 
 Zbog činjenice da svaka isplata nagrade predstavlja zasebnu blockchain transakciju koja troši gas, dio fonda (maksimalno **10%**) rezerviran je za pokrivanje transakcijskih troškova.
 Time se osigurava da sustav može autonomno izvršiti sve isplate bez vanjske intervencije.
 
 ### 5.3 Isplate
 
-* isplate se izvršavaju automatski iz smart contracta
-* nema ručne intervencije ili centralne kontrole
+* nakon izvlačenja ugovor automatski **izračunava i kreditira** nagrade svim dobitnicima (jackpot, sekundarni dobitnici i naknada za troškove)
+* dobitnici svoje nagrade preuzimaju pozivom funkcije `withdraw()` (pull-payment obrazac)
+* ovaj pristup sprječava da jedan dobitnik koji ne može primiti sredstva blokira isplatu svima ostalima
+* nema ručne intervencije ili centralne kontrole nad izračunom dobitnika
+
+### 5.4 Akumulacija jackpota (rollover)
+
+Budući da se jackpot dodjeljuje samo za pogođenih svih 5 brojeva, u praksi često nema dobitnika jackpota u pojedinom krugu. U tom slučaju:
+
+* neisplaćeni jackpot dio (50% kruga + eventualni ranije akumulirani iznos) **prenosi se u sljedeći krug** (`accumulatedJackpot`)
+* sekundarni fond (40%) i naknada za troškove (10%) isplaćuju se normalno u tekućem krugu
+* time jackpot raste iz kruga u krug sve dok ga netko ne osvoji, kada se resetira na nulu
+
+Prikazani "Current Jackpot" je stoga zbroj akumuliranog iznosa i 50% trenutno prikupljenih uplata.
 
 ---
 
@@ -149,6 +166,20 @@ Primjeri analitika:
 
 Backend koristi blockchain evente kao izvor podataka i nema mogućnost utjecaja na ishod lutrije.
 
+### 6.4 Keeper servis (automatizacija)
+
+Keeper je zaseban off-chain proces koji automatizira napredovanje životnog ciklusa kruga. U pravilnim intervalima poziva `checkUpkeep`; kada ugovor signalizira da je akcija potrebna, keeper šalje `performUpkeep` transakciju.
+
+Karakteristike:
+
+* izveden kao samostalan worker, odvojen od API-ja i analitičkog listenera (jedinstvena odgovornost, izolacija ovlaštenog ključa)
+* potpisuje transakcije računom koji je ovlašten u ugovoru (vlasnik / registry), te troši ETH za gas
+* **bez utjecaja na ishod** — ne generira slučajnost niti bira dobitnike; samo "gura" korake koje ugovor ionako dopušta
+* mora postojati točno jedna aktivna instanca (više njih = konkurentne transakcije)
+* automatski otkazuje zaglavljeni VRF zahtjev nakon isteka timeouta i ponavlja izvlačenje
+
+Lokalni razvoj koristi ekvivalentni keeper koji dodatno simulira VRF i napredovanje vremena na lokalnom čvoru.
+
 ---
 
 ## 7. Sigurnost i ograničenja
@@ -157,6 +188,7 @@ Backend koristi blockchain evente kao izvor podataka i nema mogućnost utjecaja 
 * Izvodi se na testnetu
 * Nema stvarnu financijsku vrijednost
 * Smart contract neće biti auditiran za produkcijsku upotrebu
+* Napredovanje životnog ciklusa ovisi o off-chain keeper servisu (ovlašteni račun) — to je točka centralizacije, ali keeper ne može utjecati na slučajnost ni odabir dobitnika (oni su određeni Chainlink VRF-om i on-chain logikom); u najgorem slučaju (keeper nedostupan) krug čeka, a vlasnik ima ručne fallback funkcije
 
 ---
 

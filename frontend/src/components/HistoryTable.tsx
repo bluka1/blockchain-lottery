@@ -1,47 +1,72 @@
-import { RoundTableRow } from "./RoundTableRow"
+import { useEffect, useState } from "react"
+import { RoundTableRow, type RoundWinner } from "./RoundTableRow"
+import { API_BASE_URL } from "../config/api"
 
-const tableHeadings = ["ROUND ID", "DATE", "WINNING COMBO", "PLAYERS", "TX"]
+const tableHeadings = ["ROUND", "SESSION", "DATE & TIME", "WINNING COMBO", "PLAYERS", "TX"]
 
-// TODO: hardcoded until we get data from the contract
-const tableData = [
-  {
-    roundId: "#1025",
-    date: "Jan 27, 2026",
-    winningCombo: [4, 12, 19, 22, 45],
-    players: 1,
-    tx: "#"
-  },
-  {
-    roundId: "#1024",
-    date: "Jan 24, 2026",
-    winningCombo: [4, 12, 19, 22, 45],
-    players: 1,
-    tx: "#"
-  },
-  {
-    roundId: "#1023",
-    date: "Jan 21, 2026",
-    winningCombo: [1, 9, 14, 33, 41],
-    players: 1,
-    tx: "#"
-  },
-  {
-    roundId: "#1022",
-    date: "Jan 18, 2026",
-    winningCombo: [1, 9, 14, 33, 41],
-    players: 1,
-    tx: "#"
-  },
-  {
-    roundId: "#1021",
-    date: "Jan 15, 2026",
-    winningCombo: [1, 9, 14, 33, 41],
-    players: 1,
-    tx: "#"
-  }
-]
+interface LotteryHistoryItem {
+  roundId: string;
+  roundNumber: number | null;
+  sessionId: string | null;
+  date: string | null;
+  winningCombo: number[];
+  players: number;
+  winners: RoundWinner[];
+  tx: string;
+}
 
 export function HistoryTable() {
+  const [historyData, setHistoryData] = useState<LotteryHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/lotteries/history`);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch lottery history');
+        }
+
+        const data = await response.json();
+        setHistoryData(data.items ?? []);
+      } catch (err: any) {
+        console.error('Error fetching lottery history:', err);
+        setError(err.message || 'Failed to load history');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
+  const toggleRow = (roundId: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(roundId)) {
+        next.delete(roundId);
+      } else {
+        next.add(roundId);
+      }
+      return next;
+    });
+  };
+
+  if (loading) {
+    return <div className="loading-message">Loading history...</div>;
+  }
+
+  if (error) {
+    return <div className="error-message">Error: {error}</div>;
+  }
+
+  if (historyData.length === 0) {
+    return <div className="empty-message">No lottery history available yet.</div>;
+  }
+
   return (
     <table className="rounds-table">
       <thead>
@@ -52,8 +77,19 @@ export function HistoryTable() {
         </tr>
       </thead>
       <tbody>
-        {tableData.map((round) => (
-          <RoundTableRow key={round.roundId} roundId={round.roundId} date={round.date} winningCombo={round.winningCombo} players={round.players} tx={round.tx} />
+        {historyData.map((round) => (
+          <RoundTableRow
+            key={round.roundId}
+            roundLabel={round.roundNumber ? `#${round.roundNumber}` : round.roundId}
+            sessionId={round.sessionId}
+            date={round.date}
+            winningCombo={round.winningCombo}
+            players={round.players}
+            tx={round.tx}
+            winners={round.winners ?? []}
+            isExpanded={expanded.has(round.roundId)}
+            onToggle={() => toggleRow(round.roundId)}
+          />
         ))}
       </tbody>
     </table>

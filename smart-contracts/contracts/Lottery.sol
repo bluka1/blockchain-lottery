@@ -4,7 +4,6 @@ pragma solidity ^0.8.28;
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
-// Chainlink Automation interface
 interface AutomationCompatibleInterface {
     function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData);
     function performUpkeep(bytes calldata performData) external;
@@ -21,7 +20,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     uint256 public constant TICKET_PRICE = 0.005 ether;
 
     uint256 public nextDrawTime;
-    uint256 public constant DRAW_INTERVAL = 2 minutes;
+    uint256 public constant DRAW_INTERVAL = 4 minutes;
 
     enum Phase { Open, Closed, Drawn, Paid }
     Phase public phase;
@@ -45,9 +44,15 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
     uint256 public vrfRequestId;
     bool public vrfRequestPending;
-    uint256 public lastUpkeepTimestamp;
+    uint256 public vrfRequestTimestamp;
+    uint256 public constant VRF_TIMEOUT = 30 minutes;
+
+    mapping(address => uint256) public pendingWithdrawals;
+    uint256 public totalPending;
+
     bool public automationEnabled;
-    address public automationRegistry; // only this address can perform upkeep
+    address public automationRegistry;
+    uint256 public lastUpkeepTimestamp;
 
     uint256 private locked = 1;
     modifier nonReentrant() {
@@ -69,9 +74,11 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     event PaidOut(uint256 indexed round, uint256 jackpotPool, uint256 secondaryPool, uint256 ownerFee, bool jackpotWon);
     event JackpotRollover(uint256 indexed fromRound, uint256 indexed toRound, uint256 amount);
     event NewRoundStarted(uint256 indexed round, uint256 accumulatedJackpot, uint256 nextDrawTime);
-    event AutomationToggled(bool enabled);
-    event OwnerFeeTransferFailed(uint256 amount);
     event EmergencyWithdraw(address indexed to, uint256 amount);
+    event WinningsCredited(address indexed account, uint256 amount);
+    event Withdrawn(address indexed account, uint256 amount);
+    event VRFRequestCancelled(uint256 indexed round, uint256 indexed requestId);
+    event AutomationToggled(bool enabled);
     event AutomationRegistrySet(address indexed registry);
 
     constructor(
@@ -86,8 +93,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         s_subscriptionId = vrfSubscriptionId;
         s_keyHash = keyHash;
 
-        // calculate first draw time
-        nextDrawTime = _calculateNextDrawTime();
+        nextDrawTime = block.timestamp + DRAW_INTERVAL;
         automationEnabled = true;
     }
 
@@ -103,6 +109,9 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     }
 
     function getCurrentJackpot() external view returns (uint256) {
+        if (phase == Phase.Paid) {
+            return accumulatedJackpot;
+        }
         uint256 currentPoolJackpot = (amountCollected * 50) / 100;
         return currentPoolJackpot + accumulatedJackpot;
     }
@@ -123,72 +132,26 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         emit Participated(msg.sender, currentRound, nums);
     }
 
-    // Chainlink automation (for running rounds each x minutes)
-
     /**
-     * @notice Chainlink automation check - checks every minute
+     * @notice withdraw winnings credited to the caller
      */
-    function checkUpkeep(bytes calldata /* checkData */)
-        external
-        view
-        override
-        returns (bool upkeepNeeded, bytes memory performData)
-    {
-        if (!automationEnabled) {
-            return (false, "");
-        }
+    function withdraw() external nonReentrant {
+        uint256 amount = pendingWithdrawals[msg.sender];
+        require(amount > 0, "Nothing to withdraw");
 
-        bool timeReached = (block.timestamp >= nextDrawTime);
+        pendingWithdrawals[msg.sender] = 0;
+        totalPending -= amount;
 
-        // ACTION 1: close lottery and request VRF when time reached
-        if (phase == Phase.Open && timeReached && participants.length > 0) {
-            return (true, abi.encode(uint8(1)));
-        }
+        (bool ok, ) = msg.sender.call{value: amount}("");
+        require(ok, "Withdraw failed");
 
-        // ACTION 2: payout after VRF callback
-        if (phase == Phase.Drawn) {
-            return (true, abi.encode(uint8(2)));
-        }
-
-        // ACTION 3: start new round after payout
-        if (phase == Phase.Paid) {
-            return (true, abi.encode(uint8(3)));
-        }
-
-        // ACTION 4: skip to next draw time if no participants
-        if (phase == Phase.Open && timeReached && participants.length == 0) {
-            return (true, abi.encode(uint8(4)));
-        }
-
-        return (false, "");
+        emit Withdrawn(msg.sender, amount);
     }
 
-    /**
-     * @notice Chainlink automation execution
-     * @dev only automation registry or owner can call this
-     */
-    function performUpkeep(bytes calldata performData) external override onlyAutomation {
-        require(automationEnabled, "Automation disabled");
-
-        uint8 action = abi.decode(performData, (uint8));
-
-        if (action == 1) {
-            _closeLotteryAndRequestDraw();
-        } else if (action == 2) {
-            _payoutWinnersAutomated();
-        } else if (action == 3) {
-            _startNewRoundAutomated();
-        } else if (action == 4) {
-            _skipToNextDrawTime();
-        }
-
-        lastUpkeepTimestamp = block.timestamp;
-    }
-
-    // Chainlink VRF
+    // Chainlink VRF callback
 
     /**
-     * @notice VRF callback - Chainlink dostavlja random brojeve
+     * @notice VRF callback - Chainlink delivers random numbers
      */
     function fulfillRandomWords(
         uint256 /* requestId */,
@@ -210,21 +173,127 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         emit DrawSet(currentRound, winningNumbers, randomSeed, drawTimestamp);
     }
 
-    // internal automated functions
+    // Chainlink Automation
 
     /**
-     * @notice close lottery and request VRF
+     * @notice automation check - decides which lifecycle action is due
      */
-    function _closeLotteryAndRequestDraw() internal {
+    function checkUpkeep(bytes calldata /* checkData */)
+        external
+        view
+        override
+        returns (bool upkeepNeeded, bytes memory performData)
+    {
+        if (!automationEnabled) {
+            return (false, "");
+        }
+
+        bool timeReached = block.timestamp >= nextDrawTime;
+
+        if (phase == Phase.Open && timeReached && participants.length > 0 && !vrfRequestPending) {
+            return (true, abi.encode(uint8(1)));
+        }
+        if (phase == Phase.Drawn) {
+            return (true, abi.encode(uint8(2)));
+        }
+        if (phase == Phase.Paid) {
+            return (true, abi.encode(uint8(3)));
+        }
+        if (phase == Phase.Open && timeReached && participants.length == 0) {
+            return (true, abi.encode(uint8(4)));
+        }
+
+        return (false, "");
+    }
+
+    /**
+     * @notice automation execution - only the registry or owner may call
+     */
+    function performUpkeep(bytes calldata performData) external override onlyAutomation {
+        require(automationEnabled, "Automation disabled");
+
+        uint8 action = abi.decode(performData, (uint8));
+
+        if (action == 1) {
+            require(block.timestamp >= nextDrawTime, "Too early");
+            _closeAndRequestDraw();
+        } else if (action == 2) {
+            _payout();
+        } else if (action == 3) {
+            _startNewRound();
+        } else if (action == 4) {
+            _skipToNextDrawTime();
+        } else {
+            revert("Unknown action");
+        }
+
+        lastUpkeepTimestamp = block.timestamp;
+    }
+
+    // owner functions (manual fallbacks)
+
+    /**
+     * @notice close lottery and request VRF random number
+     */
+    function closeLotteryAndRequestDraw() external onlyOwner {
+        _closeAndRequestDraw();
+    }
+
+    /**
+     * @notice payout winners after VRF has delivered winning numbers
+     */
+    function payoutWinners() external onlyOwner nonReentrant {
+        _payout();
+    }
+
+    /**
+     * @notice start a new lottery round
+     */
+    function startNewRound() external onlyOwner {
+        _startNewRound();
+    }
+
+    /**
+     * @notice cancel a VRF request that never got fulfilled and reopen the round
+     */
+    function cancelStuckVRFRequest() external onlyOwner {
+        require(vrfRequestPending, "No pending request");
+        require(phase == Phase.Closed, "Wrong phase");
+        require(block.timestamp >= vrfRequestTimestamp + VRF_TIMEOUT, "Timeout not reached");
+
+        vrfRequestPending = false;
+        phase = Phase.Open;
+
+        emit VRFRequestCancelled(currentRound, vrfRequestId);
+    }
+
+    /**
+     * @notice enable or disable automation
+     */
+    function toggleAutomation(bool enabled) external onlyOwner {
+        automationEnabled = enabled;
+        emit AutomationToggled(enabled);
+    }
+
+    /**
+     * @notice set the address allowed to call performUpkeep
+     */
+    function setAutomationRegistry(address registry) external onlyOwner {
+        require(registry != address(0), "No address");
+        automationRegistry = registry;
+        emit AutomationRegistrySet(registry);
+    }
+
+    // lifecycle internals
+
+    function _closeAndRequestDraw() internal {
         require(phase == Phase.Open, "Wrong phase");
-        require(block.timestamp >= nextDrawTime, "Too early");
         require(participants.length > 0, "No participants");
         require(!vrfRequestPending, "VRF pending");
 
         phase = Phase.Closed;
         emit Closed(currentRound, block.timestamp);
 
-        // request random words from Chainlink VRF
         vrfRequestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: s_keyHash,
@@ -239,57 +308,43 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         );
 
         vrfRequestPending = true;
+        vrfRequestTimestamp = block.timestamp;
         emit DrawRequested(currentRound, vrfRequestId);
     }
 
-    /**
-     * @notice automated payout after VRF callback
-     */
-    function _payoutWinnersAutomated() internal nonReentrant {
+    function _payout() internal {
         require(phase == Phase.Drawn, "Wrong phase");
         require(participants.length > 0, "No participants");
 
         uint256 pool = address(this).balance;
         require(pool > 0, "No funds");
 
-        // calculate pools from current round balance only (amountCollected)
-        // accumulatedJackpot is already part of address(this).balance from previous rounds
         uint256 currentRoundBalance = amountCollected;
         (uint256 currentJackpotPool, uint256 secondaryPool, uint256 ownerFee) = _calculatePools(currentRoundBalance);
 
-        // total jackpot = current round jackpot + accumulated from previous rounds
         uint256 totalJackpotPool = currentJackpotPool + accumulatedJackpot;
 
         uint8[] memory matches = _calculateMatches();
         (bool jackpotWon, uint256 jackpotPaid) = _payoutJackpot(totalJackpotPool, matches);
 
         if (!jackpotWon) {
-            // rollover - store unpaid jackpot for next round
             accumulatedJackpot = totalJackpotPool;
         } else {
             accumulatedJackpot = 0;
         }
 
-        _payoutSecondary(secondaryPool, matches);
+        _payoutSecondary(secondaryPool, matches, jackpotWon);
 
-        (bool okOwner, ) = owner().call{value: ownerFee}("");
-        if (!okOwner) {
-            // owner fee remains in contract, can be withdrawn later
-            emit OwnerFeeTransferFailed(ownerFee);
-        }
+        _credit(owner(), ownerFee);
 
         phase = Phase.Paid;
 
         emit PaidOut(currentRound, jackpotPaid, secondaryPool, ownerFee, jackpotWon);
     }
 
-    /**
-     * @notice automated start of new round
-     */
-    function _startNewRoundAutomated() internal {
+    function _startNewRound() internal {
         require(phase == Phase.Paid, "Wrong phase");
 
-        // reset for new round
         delete participants;
         amountCollected = 0;
         drawTimestamp = 0;
@@ -303,28 +358,40 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         currentRound++;
         phase = Phase.Open;
 
-        nextDrawTime = _calculateNextDrawTime();
+        nextDrawTime = block.timestamp + DRAW_INTERVAL;
 
         emit NewRoundStarted(currentRound, accumulatedJackpot, nextDrawTime);
     }
 
-    /**
-     * @notice skip to next draw if no participants
-     */
     function _skipToNextDrawTime() internal {
         require(phase == Phase.Open, "Wrong phase");
         require(participants.length == 0, "Has participants");
 
-        nextDrawTime = _calculateNextDrawTime();
+        nextDrawTime = block.timestamp + DRAW_INTERVAL;
     }
 
-    // helper functions
-
     /**
-     * @notice calculate next draw time
+     * @notice emergency withdraw - extract all ETH from contract after payout phase
      */
-    function _calculateNextDrawTime() internal view returns (uint256) {
-        return block.timestamp + DRAW_INTERVAL;
+    function emergencyWithdraw() external onlyOwner {
+        require(phase == Phase.Paid, "Can only withdraw after payout");
+
+        uint256 balance = address(this).balance - totalPending;
+        require(balance > 0, "No balance");
+
+        (bool ok, ) = owner().call{value: balance}("");
+        require(ok, "Withdraw failed");
+
+        emit EmergencyWithdraw(owner(), balance);
+    }
+
+    // internal helper functions
+
+    function _credit(address account, uint256 amount) internal {
+        if (amount == 0) return;
+        pendingWithdrawals[account] += amount;
+        totalPending += amount;
+        emit WinningsCredited(account, amount);
     }
 
     /**
@@ -407,24 +474,22 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                 amount = jackpotPool - (perJackpot * (jackpotCount - 1));
             }
 
-            (bool ok, ) = jackpotWinnersTemp[i].call{value: amount}("");
-            require(ok, "Jackpot transfer failed");
+            _credit(jackpotWinnersTemp[i], amount);
         }
 
         jackpotPaid = jackpotPool;
         return (true, jackpotPaid);
     }
 
-    function _payoutSecondary(uint256 secondaryPool, uint8[] memory matches) internal {
+    function _payoutSecondary(uint256 secondaryPool, uint8[] memory matches, bool jackpotWon) internal {
         uint256 participantCount = participants.length;
 
         uint256 secondaryCount = participantCount / 10;
         if (secondaryCount == 0) secondaryCount = 1;
         if (secondaryCount > 20) secondaryCount = 20;
 
-        address[] memory secondaryWinners = _selectSecondaryWinners(matches, secondaryCount);
+        address[] memory secondaryWinners = _selectSecondaryWinners(matches, secondaryCount, jackpotWon);
 
-        // last winner gets remainder to avoid dust ETH
         uint256 perSecondary = secondaryPool / secondaryCount;
         for (uint256 i = 0; i < secondaryCount; i++) {
             uint256 amount = perSecondary;
@@ -433,22 +498,18 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                 amount = secondaryPool - (perSecondary * (secondaryCount - 1));
             }
 
-            (bool ok, ) = secondaryWinners[i].call{value: amount}("");
-            require (ok, "Secondary transfer failed");
+            _credit(secondaryWinners[i], amount);
         }
     }
 
-    function _selectSecondaryWinners(uint8[] memory matches, uint256 secondaryCount) internal view returns (address[] memory) {
+    function _selectSecondaryWinners(uint8[] memory matches, uint256 secondaryCount, bool jackpotWon) internal view returns (address[] memory) {
         uint256 participantCount = participants.length;
-        uint8 maxMatches = 0;
-
-        for (uint256 i = 0; i < participantCount; i++) {
-            if (matches[i] > maxMatches) maxMatches = matches[i];
-        }
 
         bool[] memory isJackpot = new bool[](participantCount);
-        for (uint256 i = 0; i < participantCount; i++) {
-            if (matches[i] == maxMatches) isJackpot[i] = true;
+        if (jackpotWon) {
+            for (uint256 i = 0; i < participantCount; i++) {
+                if (matches[i] == 5) isJackpot[i] = true;
+            }
         }
 
         bool[] memory picked = new bool[](participantCount);

@@ -6,7 +6,7 @@ Blockchain projekt koji implementira decentraliziranu lutriju na Ethereum testne
 
 - Solidity (Ethereum testnet)
 - React + ethers.js + Vite
-- Hardhar + ethers.js
+- Hardhat + ethers.js
 - Randomness Oracle (Chainlink VRF)
 - Node.js (backend analitika)
 
@@ -28,16 +28,26 @@ Blockchain projekt koji implementira decentraliziranu lutriju na Ethereum testne
 - `npm ci`
 - `npm run dev`
 
-### Backend
+### Backend (u drugoj sesiji terminala)
 
 - `cd backend`
 - `npm ci`
 - `npm run start`
 
-### Lokalni blockchain
+### Lokalni blockchain (u trećoj sesiji terminala)
+
+- `cd ../smart-contracts`
+- `npm run node`
+
+### Deploy lokalnog pametnog ugovora (u četvrtoj sesiji terminala)
 
 - `cd smart-contracts`
-- `npx hardhat node`
+- `npm run deploy:local`
+
+### Lokalna simulacija Chainlink VRF-a i automatizacije (u istoj sesiji terminala kao i deploy)
+
+- `cd smart-contracts`
+- `npm run keeper`
 
 ## Docs
 

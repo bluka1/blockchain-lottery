@@ -4,12 +4,15 @@ import { BrowserRouter } from 'react-router'
 import './index.css'
 import App from './App.tsx'
 import { Web3ContextProvider } from './providers/Web3ContextProvider.tsx'
+import { LotteryEventsProvider } from './providers/LotteryEventsProvider.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Web3ContextProvider>
-        <App />
+        <LotteryEventsProvider>
+          <App />
+        </LotteryEventsProvider>
       </Web3ContextProvider>
     </BrowserRouter>
   </StrictMode>,

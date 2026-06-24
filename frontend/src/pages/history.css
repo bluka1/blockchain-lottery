@@ -1,182 +1,328 @@
 .history-page {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  margin: 0 auto;
-  max-width: 1400px;
-  padding: 24px;
-  width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 32px;
+	margin: 0 auto;
+	max-width: 1400px;
+	padding: 24px;
+	width: 100%;
 }
 
 .history-header {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
+	align-items: center;
+	display: flex;
+	justify-content: space-between;
 }
 
 .history-title {
-  color: var(--text-primary);
-  font-size: 48px;
-  font-weight: 600;
-  margin: 0 0 8px;
+	color: var(--text-primary);
+	font-size: 48px;
+	font-weight: 600;
+	margin: 0 0 8px;
 }
 
 .history-subtitle {
-  color: var(--text-secondary);
-  font-size: 16px;
-  margin: 0;
+	color: var(--text-secondary);
+	font-size: 16px;
+	margin: 0;
 }
 
 .history-content {
-  display: grid;
-  gap: 24px;
-  grid-template-columns: 1fr 400px;
+	display: grid;
+	gap: 24px;
+	grid-template-columns: 1fr 400px;
 }
 
 .history-main {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
+.history-tabs {
+	display: flex;
+	gap: 8px;
+}
+
+.history-tab {
+	background-color: transparent;
+	border: 1px solid var(--border-color-light);
+	border-radius: 8px;
+	color: var(--text-secondary);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 600;
+	padding: 10px 18px;
+	transition: all 0.2s;
+}
+
+.history-tab:hover {
+	color: var(--text-primary);
+}
+
+.history-tab-active {
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
+	color: var(--text-primary);
 }
 
 .rounds-table {
-  background-color: var(--card-background);
-  border: 1px solid var(--border-color-light);
-  border-collapse: collapse;
-  width: 100%;
+	background-color: var(--card-background);
+	border: 1px solid var(--border-color-light);
+	border-collapse: collapse;
+	width: 100%;
 }
 
 .rounds-table thead {
-  border-bottom: 1px solid var(--border-color-light);
+	border-bottom: 1px solid var(--border-color-light);
 }
 
 .rounds-table th {
-  color: var(--text-tertiary);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  padding: 16px;
-  text-align: left;
-  text-transform: uppercase;
+	color: var(--text-tertiary);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 1px;
+	padding: 16px;
+	text-align: left;
+	text-transform: uppercase;
 }
 
 .rounds-table td {
-  color: var(--text-secondary);
-  font-size: 14px;
-  padding: 16px;
+	color: var(--text-secondary);
+	font-size: 14px;
+	padding: 16px;
 }
 
 .rounds-table tbody tr {
-  border-bottom: 1px solid var(--border-color-light);
+	border-bottom: 1px solid var(--border-color-light);
 }
 
 .rounds-table tbody tr:last-child {
-  border-bottom: none;
+	border-bottom: none;
 }
 
 .round-id {
-  color: var(--text-primary);
-  font-weight: 600;
+	color: var(--text-primary);
+	font-weight: 600;
 }
 
 .winning-combo {
-  display: flex;
-  gap: 8px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
 }
 
 .number-badge {
-  background-color: var(--primary-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 4px 8px;
+	background-color: var(--primary-color);
+	border-radius: 6px;
+	color: var(--text-primary);
+	font-size: 14px;
+	font-weight: 600;
+	padding: 4px 8px;
+}
+
+.number-badge-hit {
+	background-color: #16a34a;
+}
+
+.number-badge-muted {
+	background-color: rgba(148, 163, 184, 0.25);
+	color: var(--text-secondary);
+}
+
+.session-badge {
+	background-color: rgba(124, 92, 255, 0.15);
+	border: 1px solid rgba(124, 92, 255, 0.4);
+	border-radius: 6px;
+	color: var(--text-secondary);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
+	letter-spacing: 0.5px;
+	padding: 3px 8px;
+}
+
+.matched-count {
+	font-weight: 600;
+}
+
+.round-row-expandable {
+	cursor: pointer;
+}
+
+.round-row-expandable:hover {
+	background-color: rgba(124, 92, 255, 0.06);
+}
+
+.round-caret {
+	color: var(--text-tertiary);
+	display: inline-block;
+	margin-right: 8px;
+	width: 10px;
+}
+
+.winners-detail-row td {
+	background-color: rgba(124, 92, 255, 0.05);
+	padding-top: 8px;
+}
+
+.winners-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.winners-title {
+	color: var(--text-tertiary);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+}
+
+.winner-item {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.winner-type {
+	font-weight: 600;
+}
+
+.winner-jackpot {
+	color: #f5b50a;
+}
+
+.winner-lucky {
+	color: #7c5cff;
+}
+
+.winner-address {
+	color: var(--text-secondary);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 13px;
+}
+
+.winner-matched {
+	color: var(--text-tertiary);
+	font-size: 13px;
+}
+
+.winner-amount {
+	color: #16a34a;
+	font-weight: 600;
+	margin-left: auto;
+}
+
+.analytics-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
+.result-won {
+	color: #16a34a;
+	font-weight: 600;
+}
+
+.result-lost {
+	color: var(--text-tertiary);
 }
 
 .tx-link {
-  border: 1px solid var(--border-color-light);
-  border-radius: 6px;
-  padding: 8px 12px;
-  color: var(--text-secondary);
-  font-size: 18px;
-  text-decoration: none;
-  transition: color 0.2s;
+	border: 1px solid var(--border-color-light);
+	border-radius: 6px;
+	padding: 8px 12px;
+	color: var(--text-secondary);
+	font-size: 18px;
+	text-decoration: none;
+	transition: color 0.2s;
 }
 
 .tx-link:hover {
-  background-color: var(--card-background);
-  color: var(--text-primary);
+	background-color: var(--card-background);
+	color: var(--text-primary);
+}
+
+.tx-copy {
+	background-color: transparent;
+	border: 1px solid var(--border-color-light);
+	border-radius: 6px;
+	color: var(--text-secondary);
+	cursor: pointer;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
+	padding: 6px 10px;
+	transition:
+		color 0.2s,
+		background-color 0.2s;
+}
+
+.tx-copy:hover {
+	background-color: var(--card-background);
+	color: var(--text-primary);
+}
+
+.tx-empty {
+	color: var(--text-tertiary);
 }
 
 .history-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
 }
 
 .stat-card {
-  background-color: var(--card-background);
-  border: 1px solid var(--border-color-light);
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 24px;
+	background-color: var(--card-background);
+	border: 1px solid var(--border-color-light);
+	border-radius: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 24px;
 }
 
 .stat-title {
-  color: var(--text-primary);
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
+	color: var(--text-primary);
+	font-size: 18px;
+	font-weight: 600;
+	margin: 0;
 }
 
-.frequency-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.stat-subtitle {
+	color: var(--text-secondary);
+	font-size: 13px;
+	margin: -8px 0 0;
 }
 
-.frequency-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.frequency-label {
-  color: var(--text-secondary);
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  font-size: 14px;
-  gap: 24px;
-}
-
-.frequency-count {
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
+.stat-empty {
+	color: var(--text-secondary);
+	font-size: 14px;
+	margin: 0;
 }
 
 .verified-card {
-  background-color: var(--primary-color);
-  border: none;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 24px;
+	background-color: var(--primary-color);
+	border: none;
+	border-radius: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 24px;
 }
 
 .verified-title {
-  color: var(--text-primary);
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
+	color: var(--text-primary);
+	font-size: 18px;
+	font-weight: 600;
+	margin: 0;
 }
 
 .verified-text {
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0;
+	color: var(--text-secondary);
+	font-size: 14px;
+	line-height: 1.6;
+	margin: 0;
 }

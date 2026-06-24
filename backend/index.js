@@ -2,30 +2,12 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const admin = require("firebase-admin");
+const { admin, db } = require("./src/config/firebase");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-
-if (
-  !process.env.FIREBASE_PROJECT_ID ||
-  !process.env.FIREBASE_CLIENT_EMAIL ||
-  !process.env.FIREBASE_PRIVATE_KEY
-) {
-  throw new Error("Missing Firebase environment variables");
-}
-
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  }),
-});
-
-const db = admin.firestore();
 
 // Health check
 app.get("/health", (req, res) => {
@@ -95,11 +77,36 @@ app.post("/api/lotteries", async (req, res) => {
   }
 });
 
+const toIso = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  return new Date(value).toISOString();
+};
+
+const computeWinners = (data) => {
+  const picks = data.picks ?? {};
+  const winnings = data.winnings ?? {};
+  const winningSet = new Set((data.winningCombo ?? []).map(Number));
+
+  return Object.entries(winnings)
+    .filter(([address, amount]) => picks[address] && Number(amount) > 0)
+    .map(([address, amount]) => {
+      const matched = picks[address].filter((n) => winningSet.has(Number(n))).length;
+      return {
+        address,
+        amount,
+        matched,
+        type: data.jackpotWon && matched === 5 ? "jackpot" : "lucky",
+      };
+    })
+    .sort((a, b) => Number(b.amount) - Number(a.amount));
+};
+
 app.get("/api/lotteries/history", async (req, res) => {
   try {
     const snapshot = await db
       .collection("lotteries")
-      .orderBy("date", "desc")
+      .orderBy("drawTimestamp", "desc")
       .limit(50)
       .get();
 
@@ -107,9 +114,12 @@ app.get("/api/lotteries/history", async (req, res) => {
       const data = doc.data();
       return {
         roundId: doc.id,
-        date: data.date,
+        roundNumber: data.roundNumber ?? null,
+        sessionId: data.sessionId ?? null,
+        date: toIso(data.drawTimestamp) ?? data.date ?? null,
         winningCombo: data.winningCombo ?? [],
         players: Array.isArray(data.participants) ? data.participants.length : 0,
+        winners: computeWinners(data),
         tx: data.tx ?? "#",
       };
     });
@@ -118,6 +128,152 @@ app.get("/api/lotteries/history", async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to fetch history" });
+  }
+});
+
+app.get("/api/lotteries/my-games", async (req, res) => {
+  try {
+    const address = String(req.query.address ?? "").toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(address)) {
+      return res.status(400).json({ ok: false, error: "Valid address query param required" });
+    }
+
+    const snapshot = await db
+      .collection("lotteries")
+      .orderBy("drawTimestamp", "desc")
+      .limit(100)
+      .get();
+
+    const items = [];
+    snapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      const picks = data.picks ?? {};
+      const yourNumbers = picks[address];
+      if (!Array.isArray(yourNumbers)) {
+        return;
+      }
+
+      const winningCombo = Array.isArray(data.winningCombo) ? data.winningCombo : [];
+      const winningSet = new Set(winningCombo.map(Number));
+      const matchedNumbers = yourNumbers.filter((n) => winningSet.has(Number(n)));
+      const amount = data.winnings && data.winnings[address] ? data.winnings[address] : "0";
+
+      items.push({
+        roundId: doc.id,
+        roundNumber: data.roundNumber ?? null,
+        sessionId: data.sessionId ?? null,
+        date: toIso(data.drawTimestamp) ?? data.date ?? null,
+        yourNumbers: yourNumbers.map(Number),
+        winningCombo,
+        matchedNumbers,
+        matchedCount: matchedNumbers.length,
+        won: Number(amount) > 0,
+        amount,
+        tx: data.tx ?? "#",
+      });
+    });
+
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to fetch my games" });
+  }
+});
+
+app.get("/api/lotteries/stats/participants", async (req, res) => {
+  try {
+    const snapshot = await db
+      .collection("lotteries")
+      .orderBy("drawTimestamp", "asc")
+      .limit(100)
+      .get();
+
+    const items = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        roundId: doc.id,
+        roundNumber: data.roundNumber ?? null,
+        sessionId: data.sessionId ?? null,
+        date: toIso(data.drawTimestamp) ?? data.date ?? null,
+        players: Array.isArray(data.participants) ? data.participants.length : 0,
+      };
+    });
+
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to compute participants" });
+  }
+});
+
+app.get("/api/lotteries/stats/payouts", async (req, res) => {
+  try {
+    const snapshot = await db
+      .collection("lotteries")
+      .orderBy("drawTimestamp", "asc")
+      .limit(100)
+      .get();
+
+    const items = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      const jackpot = Number(data.jackpotPool ?? 0);
+      const secondary = Number(data.secondaryPool ?? 0);
+      const owner = Number(data.ownerFee ?? 0);
+      return {
+        roundId: doc.id,
+        roundNumber: data.roundNumber ?? null,
+        sessionId: data.sessionId ?? null,
+        date: toIso(data.drawTimestamp) ?? data.date ?? null,
+        jackpot,
+        secondary,
+        owner,
+        total: jackpot + secondary + owner,
+      };
+    });
+
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to compute payouts" });
+  }
+});
+
+app.get("/api/lotteries/stats/number-frequency", async (req, res) => {
+  try {
+    const MIN_NUMBER = 1;
+    const MAX_NUMBER = 50;
+
+    const snapshot = await db.collection("lotteries").get();
+
+    const counts = new Map();
+    for (let n = MIN_NUMBER; n <= MAX_NUMBER; n++) {
+      counts.set(n, 0);
+    }
+
+    let totalDraws = 0;
+    snapshot.docs.forEach((doc) => {
+      const combo = doc.data().winningCombo;
+      if (!Array.isArray(combo) || combo.length === 0) {
+        return;
+      }
+      totalDraws += 1;
+      combo.forEach((value) => {
+        const number = Number(value);
+        if (counts.has(number)) {
+          counts.set(number, counts.get(number) + 1);
+        }
+      });
+    });
+
+    const items = Array.from(counts.entries()).map(([number, count]) => ({
+      number,
+      count,
+    }));
+
+    return res.json({ ok: true, totalDraws, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to compute number frequency" });
   }
 });
 

@@ -29,8 +29,8 @@ Sudjelovanje u lutriji odvija se isključivo putem web aplikacije povezane s Eth
 Uvjeti sudjelovanja:
 
 * jedan wallet = jedna prijava po lutrijskom krugu
-* fiksni ulog od **0,0050 ETH ili otprilike 10 USD**
-* obavezan odabir **5/50 brojeva**
+* fiksni ulog od **0,0050 ETH**
+* obavezan odabir **5/50 brojeva** (svih 5 mora biti različito)
 
 Smart contract validira sve uvjete prije prihvaćanja prijave.
 
@@ -84,19 +84,21 @@ Cijeli životni ciklus kruga (zatvaranje → zahtjev VRF-u → isplata → novi 
 
 ## 5. Podjela nagrada
 
-Ukupni nagradni fond sastoji se od svih prikupljenih uplata u jednom lutrijskom krugu.
+Nagradni fond jednog kruga čine sve prikupljene uplate tog kruga. Uplate se dijele u tri dijela: **50%** ide u jackpot, **40%** u sekundarni (lucky-draw) fond i **10%** za pokrivanje troškova. Jackpot dio dodatno uključuje i **akumulirani iznos** prenesen iz prethodnih krugova (vidi §5.4).
 
-### 5.1 Glavni dobitnik
+### 5.1 Glavni dobitnik (jackpot)
 
-* **50%** ukupnog fonda dodjeljuje se sudioniku koji je pogodio točnu dobitnu kombinaciju
-* u slučaju da nema točne kombinacije, može se primijeniti logika "najbliže kombinacije" (npr. najveći broj pogođenih brojeva)
+* **50%** kruga (uvećano za akumulirani jackpot) dodjeljuje se sudioniku koji je pogodio **svih 5** brojeva
+* ako ima više dobitnika s 5 pogodaka, jackpot se dijeli jednako među njima
+* ako **nitko** ne pogodi svih 5, jackpot se ne isplaćuje nego se prenosi (rollover) u sljedeći krug
 
-### 5.2 Sekundarni dobitnici
+### 5.2 Sekundarni dobitnici (lucky draw)
 
-* **40%** fonda raspodjeljuje se između **10–15% nasumično odabranih sudionika**
+* **40%** fonda raspodjeljuje se na **nasumično odabrane sudionike** (otprilike **10%** sudionika, najmanje 1, najviše 20)
+* odabir je **neovisan o broju pogođenih brojeva** — moguće je osvojiti i bez ijednog pogotka, a pogodak ne jamči nagradu
 * svaki sekundarni dobitnik dobiva jednak udio
 
-Odabir sekundarnih dobitnika također koristi randomness oracle kako bi se osigurala pravednost.
+Odabir sekundarnih dobitnika koristi seed iz Chainlink VRF-a kako bi se osigurala pravednost. Ako je jackpot osvojen, dobitnici jackpota se isključuju iz sekundarnog izvlačenja (osim ako nema dovoljno drugih sudionika).
 
 Zbog činjenice da svaka isplata nagrade predstavlja zasebnu blockchain transakciju koja troši gas, dio fonda (maksimalno **10%**) rezerviran je za pokrivanje transakcijskih troškova.
 Time se osigurava da sustav može autonomno izvršiti sve isplate bez vanjske intervencije.
@@ -107,6 +109,16 @@ Time se osigurava da sustav može autonomno izvršiti sve isplate bez vanjske in
 * dobitnici svoje nagrade preuzimaju pozivom funkcije `withdraw()` (pull-payment obrazac)
 * ovaj pristup sprječava da jedan dobitnik koji ne može primiti sredstva blokira isplatu svima ostalima
 * nema ručne intervencije ili centralne kontrole nad izračunom dobitnika
+
+### 5.4 Akumulacija jackpota (rollover)
+
+Budući da se jackpot dodjeljuje samo za pogođenih svih 5 brojeva, u praksi često nema dobitnika jackpota u pojedinom krugu. U tom slučaju:
+
+* neisplaćeni jackpot dio (50% kruga + eventualni ranije akumulirani iznos) **prenosi se u sljedeći krug** (`accumulatedJackpot`)
+* sekundarni fond (40%) i naknada za troškove (10%) isplaćuju se normalno u tekućem krugu
+* time jackpot raste iz kruga u krug sve dok ga netko ne osvoji, kada se resetira na nulu
+
+Prikazani "Current Jackpot" je stoga zbroj akumuliranog iznosa i 50% trenutno prikupljenih uplata.
 
 ---
 

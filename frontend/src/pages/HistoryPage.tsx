@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { HistoryTable } from '../components/HistoryTable'
 import { MyGamesTable } from '../components/MyGamesTable'
 import { MostFrequentNumbersCard } from '../components/MostFrequentNumbersCard'
+import { ParticipantsChart } from '../components/ParticipantsChart'
+import { PayoutsChart } from '../components/PayoutsChart'
 import './history.css'
 
-type HistoryTab = 'history' | 'my-games'
+type HistoryTab = 'history' | 'my-games' | 'analytics'
 
 export function HistoryPage() {
   const [activeTab, setActiveTab] = useState<HistoryTab>('history')
@@ -35,9 +37,22 @@ export function HistoryPage() {
             >
               My Games
             </button>
+            <button
+              className={`history-tab ${activeTab === 'analytics' ? 'history-tab-active' : ''}`}
+              onClick={() => setActiveTab('analytics')}
+            >
+              Analytics
+            </button>
           </div>
 
-          {activeTab === 'history' ? <HistoryTable /> : <MyGamesTable />}
+          {activeTab === 'history' && <HistoryTable />}
+          {activeTab === 'my-games' && <MyGamesTable />}
+          {activeTab === 'analytics' && (
+            <div className="analytics-grid">
+              <ParticipantsChart />
+              <PayoutsChart />
+            </div>
+          )}
         </section>
 
         <aside className="history-sidebar">

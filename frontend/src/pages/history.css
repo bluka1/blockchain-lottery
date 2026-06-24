@@ -145,6 +145,82 @@
 	font-weight: 600;
 }
 
+.round-row-expandable {
+	cursor: pointer;
+}
+
+.round-row-expandable:hover {
+	background-color: rgba(124, 92, 255, 0.06);
+}
+
+.round-caret {
+	color: var(--text-tertiary);
+	display: inline-block;
+	margin-right: 8px;
+	width: 10px;
+}
+
+.winners-detail-row td {
+	background-color: rgba(124, 92, 255, 0.05);
+	padding-top: 8px;
+}
+
+.winners-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.winners-title {
+	color: var(--text-tertiary);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+}
+
+.winner-item {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.winner-type {
+	font-weight: 600;
+}
+
+.winner-jackpot {
+	color: #f5b50a;
+}
+
+.winner-lucky {
+	color: #7c5cff;
+}
+
+.winner-address {
+	color: var(--text-secondary);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 13px;
+}
+
+.winner-matched {
+	color: var(--text-tertiary);
+	font-size: 13px;
+}
+
+.winner-amount {
+	color: #16a34a;
+	font-weight: 600;
+	margin-left: auto;
+}
+
+.analytics-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
 .result-won {
 	color: #16a34a;
 	font-weight: 600;

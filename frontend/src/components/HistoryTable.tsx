@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { RoundTableRow } from "./RoundTableRow"
+import { RoundTableRow, type RoundWinner } from "./RoundTableRow"
 import { API_BASE_URL } from "../config/api"
 
 const tableHeadings = ["ROUND", "SESSION", "DATE & TIME", "WINNING COMBO", "PLAYERS", "TX"]
@@ -11,6 +11,7 @@ interface LotteryHistoryItem {
   date: string | null;
   winningCombo: number[];
   players: number;
+  winners: RoundWinner[];
   tx: string;
 }
 
@@ -18,6 +19,7 @@ export function HistoryTable() {
   const [historyData, setHistoryData] = useState<LotteryHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -40,6 +42,18 @@ export function HistoryTable() {
 
     fetchHistory();
   }, []);
+
+  const toggleRow = (roundId: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(roundId)) {
+        next.delete(roundId);
+      } else {
+        next.add(roundId);
+      }
+      return next;
+    });
+  };
 
   if (loading) {
     return <div className="loading-message">Loading history...</div>;
@@ -72,6 +86,9 @@ export function HistoryTable() {
             winningCombo={round.winningCombo}
             players={round.players}
             tx={round.tx}
+            winners={round.winners ?? []}
+            isExpanded={expanded.has(round.roundId)}
+            onToggle={() => toggleRow(round.roundId)}
           />
         ))}
       </tbody>

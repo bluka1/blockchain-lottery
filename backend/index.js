@@ -83,6 +83,25 @@ const toIso = (value) => {
   return new Date(value).toISOString();
 };
 
+const computeWinners = (data) => {
+  const picks = data.picks ?? {};
+  const winnings = data.winnings ?? {};
+  const winningSet = new Set((data.winningCombo ?? []).map(Number));
+
+  return Object.entries(winnings)
+    .filter(([address, amount]) => picks[address] && Number(amount) > 0)
+    .map(([address, amount]) => {
+      const matched = picks[address].filter((n) => winningSet.has(Number(n))).length;
+      return {
+        address,
+        amount,
+        matched,
+        type: data.jackpotWon && matched === 5 ? "jackpot" : "lucky",
+      };
+    })
+    .sort((a, b) => Number(b.amount) - Number(a.amount));
+};
+
 app.get("/api/lotteries/history", async (req, res) => {
   try {
     const snapshot = await db
@@ -100,6 +119,7 @@ app.get("/api/lotteries/history", async (req, res) => {
         date: toIso(data.drawTimestamp) ?? data.date ?? null,
         winningCombo: data.winningCombo ?? [],
         players: Array.isArray(data.participants) ? data.participants.length : 0,
+        winners: computeWinners(data),
         tx: data.tx ?? "#",
       };
     });
@@ -157,6 +177,64 @@ app.get("/api/lotteries/my-games", async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to fetch my games" });
+  }
+});
+
+app.get("/api/lotteries/stats/participants", async (req, res) => {
+  try {
+    const snapshot = await db
+      .collection("lotteries")
+      .orderBy("drawTimestamp", "asc")
+      .limit(100)
+      .get();
+
+    const items = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        roundId: doc.id,
+        roundNumber: data.roundNumber ?? null,
+        sessionId: data.sessionId ?? null,
+        date: toIso(data.drawTimestamp) ?? data.date ?? null,
+        players: Array.isArray(data.participants) ? data.participants.length : 0,
+      };
+    });
+
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to compute participants" });
+  }
+});
+
+app.get("/api/lotteries/stats/payouts", async (req, res) => {
+  try {
+    const snapshot = await db
+      .collection("lotteries")
+      .orderBy("drawTimestamp", "asc")
+      .limit(100)
+      .get();
+
+    const items = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      const jackpot = Number(data.jackpotPool ?? 0);
+      const secondary = Number(data.secondaryPool ?? 0);
+      const owner = Number(data.ownerFee ?? 0);
+      return {
+        roundId: doc.id,
+        roundNumber: data.roundNumber ?? null,
+        sessionId: data.sessionId ?? null,
+        date: toIso(data.drawTimestamp) ?? data.date ?? null,
+        jackpot,
+        secondary,
+        owner,
+        total: jackpot + secondary + owner,
+      };
+    });
+
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to compute payouts" });
   }
 });
 

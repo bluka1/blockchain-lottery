@@ -46,16 +46,18 @@ export function useLotteryData(userAddress: string | null, autoRefresh = true) {
     setData((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const round = await getCurrentRound();
-      const phase = await getPhase();
-      const nextDraw = await getNextDrawTime();
-      const jackpot = await getCurrentJackpot();
-      const participants = await getParticipantsCount();
+      const [round, phase, nextDraw, jackpot, participants] = await Promise.all([
+        getCurrentRound(),
+        getPhase(),
+        getNextDrawTime(),
+        getCurrentJackpot(),
+        getParticipantsCount(),
+      ]);
 
-      let userEntry = null;
-      if (userAddress && round !== null) {
-        userEntry = await getUserEntry(round, userAddress);
-      }
+      const userEntry =
+        userAddress && round !== null
+          ? await getUserEntry(round, userAddress)
+          : null;
 
       setData({
         currentRound: round,

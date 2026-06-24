@@ -65,7 +65,7 @@ async function main() {
     .find((parsed) => parsed?.name === "SubscriptionCreated");
   const subId: bigint = created!.args.subId;
 
-  await (await coordinator.fundSubscription(subId, ethers.parseEther("100"))).wait();
+  await (await coordinator.fundSubscription(subId, ethers.parseEther("1000000"))).wait();
 
   const lottery = await ethers.deployContract("Lottery", [
     subId,

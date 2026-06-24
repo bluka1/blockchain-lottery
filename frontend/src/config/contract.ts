@@ -10,6 +10,20 @@ export const CONTRACT_CONFIG = {
 
 export const EXPECTED_CHAIN_ID_HEX = `0x${CONTRACT_CONFIG.chainId.toString(16)}`;
 
+const EXPLORER_BASE_URLS: Record<number, string> = {
+  1: "https://etherscan.io",
+  11155111: "https://sepolia.etherscan.io",
+  17000: "https://holesky.etherscan.io",
+};
+
+export function getExplorerTxUrl(txHash: string): string | null {
+  const base = EXPLORER_BASE_URLS[CONTRACT_CONFIG.chainId];
+  if (!base || !txHash || !txHash.startsWith("0x")) {
+    return null;
+  }
+  return `${base}/tx/${txHash}`;
+}
+
 export const Phase = {
   Open: 0,
   Closed: 1,

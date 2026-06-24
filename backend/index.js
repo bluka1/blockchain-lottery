@@ -77,11 +77,17 @@ app.post("/api/lotteries", async (req, res) => {
   }
 });
 
+const toIso = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  return new Date(value).toISOString();
+};
+
 app.get("/api/lotteries/history", async (req, res) => {
   try {
     const snapshot = await db
       .collection("lotteries")
-      .orderBy("date", "desc")
+      .orderBy("drawTimestamp", "desc")
       .limit(50)
       .get();
 
@@ -89,7 +95,9 @@ app.get("/api/lotteries/history", async (req, res) => {
       const data = doc.data();
       return {
         roundId: doc.id,
-        date: data.date,
+        roundNumber: data.roundNumber ?? null,
+        sessionId: data.sessionId ?? null,
+        date: toIso(data.drawTimestamp) ?? data.date ?? null,
         winningCombo: data.winningCombo ?? [],
         players: Array.isArray(data.participants) ? data.participants.length : 0,
         tx: data.tx ?? "#",
@@ -100,6 +108,55 @@ app.get("/api/lotteries/history", async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to fetch history" });
+  }
+});
+
+app.get("/api/lotteries/my-games", async (req, res) => {
+  try {
+    const address = String(req.query.address ?? "").toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(address)) {
+      return res.status(400).json({ ok: false, error: "Valid address query param required" });
+    }
+
+    const snapshot = await db
+      .collection("lotteries")
+      .orderBy("drawTimestamp", "desc")
+      .limit(100)
+      .get();
+
+    const items = [];
+    snapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      const picks = data.picks ?? {};
+      const yourNumbers = picks[address];
+      if (!Array.isArray(yourNumbers)) {
+        return;
+      }
+
+      const winningCombo = Array.isArray(data.winningCombo) ? data.winningCombo : [];
+      const winningSet = new Set(winningCombo.map(Number));
+      const matchedNumbers = yourNumbers.filter((n) => winningSet.has(Number(n)));
+      const amount = data.winnings && data.winnings[address] ? data.winnings[address] : "0";
+
+      items.push({
+        roundId: doc.id,
+        roundNumber: data.roundNumber ?? null,
+        sessionId: data.sessionId ?? null,
+        date: toIso(data.drawTimestamp) ?? data.date ?? null,
+        yourNumbers: yourNumbers.map(Number),
+        winningCombo,
+        matchedNumbers,
+        matchedCount: matchedNumbers.length,
+        won: Number(amount) > 0,
+        amount,
+        tx: data.tx ?? "#",
+      });
+    });
+
+    return res.json({ ok: true, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to fetch my games" });
   }
 });
 

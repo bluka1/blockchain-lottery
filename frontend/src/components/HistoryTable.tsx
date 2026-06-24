@@ -2,11 +2,13 @@ import { useEffect, useState } from "react"
 import { RoundTableRow } from "./RoundTableRow"
 import { API_BASE_URL } from "../config/api"
 
-const tableHeadings = ["ROUND ID", "DATE", "WINNING COMBO", "PLAYERS", "TX"]
+const tableHeadings = ["ROUND", "SESSION", "DATE & TIME", "WINNING COMBO", "PLAYERS", "TX"]
 
 interface LotteryHistoryItem {
   roundId: string;
-  date: string;
+  roundNumber: number | null;
+  sessionId: string | null;
+  date: string | null;
   winningCombo: number[];
   players: number;
   tx: string;
@@ -27,24 +29,11 @@ export function HistoryTable() {
         }
 
         const data = await response.json();
-
-        const mappedData: LotteryHistoryItem[] = data.items.map((item: any) => ({
-          roundId: `#${item.round || item.roundId}`,
-          date: new Date(item.date).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          }),
-          winningCombo: item.winningCombo || [],
-          players: item.players || 0,
-          tx: item.tx || '#'
-        }));
-
-        setHistoryData(mappedData);
-        setLoading(false);
+        setHistoryData(data.items ?? []);
       } catch (err: any) {
         console.error('Error fetching lottery history:', err);
         setError(err.message || 'Failed to load history');
+      } finally {
         setLoading(false);
       }
     };
@@ -77,7 +66,8 @@ export function HistoryTable() {
         {historyData.map((round) => (
           <RoundTableRow
             key={round.roundId}
-            roundId={round.roundId}
+            roundLabel={round.roundNumber ? `#${round.roundNumber}` : round.roundId}
+            sessionId={round.sessionId}
             date={round.date}
             winningCombo={round.winningCombo}
             players={round.players}

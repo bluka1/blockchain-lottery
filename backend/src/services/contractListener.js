@@ -7,12 +7,14 @@ const CONTRACT_ADDRESS =
   process.env.LOTTERY_CONTRACT_ADDRESS ||
   "0x6bb457c06d950aE273fBE89e32Dff89AaA2AfF0F";
 const RPC_URL = process.env.RPC_URL || process.env.SEPOLIA_RPC_URL || "";
+const SESSION_ID = process.env.LOTTERY_SESSION_ID || "default";
 
 const CONTRACT_ABI = [
   "event Participated(address indexed user, uint256 indexed round, uint8[5] numbers)",
   "event DrawSet(uint256 indexed round, uint8[5] winningNumbers, uint256 seed, uint256 timestamp)",
   "event PaidOut(uint256 indexed round, uint256 jackpotPool, uint256 secondaryPool, uint256 ownerFee, bool jackpotWon)",
   "event NewRoundStarted(uint256 indexed round, uint256 accumulatedJackpot, uint256 nextDrawTime)",
+  "event WinningsCredited(address indexed account, uint256 amount)",
 ];
 
 const toDateString = (date) => date.toISOString().slice(0, 10);
@@ -28,7 +30,7 @@ class ContractListener {
   }
 
   roundDoc(round) {
-    return db.collection("lotteries").doc(round.toString());
+    return db.collection("lotteries").doc(`${SESSION_ID}_${round}`);
   }
 
   async startListening() {
@@ -55,14 +57,16 @@ class ContractListener {
     try {
       const roundNumber = Number(round);
       const picked = numbers.map((n) => Number(n));
+      const userLower = user.toLowerCase();
 
       await this.roundDoc(roundNumber)
         .collection("entries")
-        .doc(user.toLowerCase())
+        .doc(userLower)
         .set({
           user,
           numbers: picked,
           round: roundNumber,
+          sessionId: SESSION_ID,
           blockNumber: event.log.blockNumber,
           transactionHash: event.log.transactionHash,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -71,7 +75,9 @@ class ContractListener {
       await this.roundDoc(roundNumber).set(
         {
           roundNumber,
+          sessionId: SESSION_ID,
           participants: admin.firestore.FieldValue.arrayUnion(user),
+          picks: { [userLower]: picked },
           status: "open",
         },
         { merge: true }
@@ -89,6 +95,7 @@ class ContractListener {
       await this.roundDoc(roundNumber).set(
         {
           roundNumber,
+          sessionId: SESSION_ID,
           winningCombo: winningNumbers.map((n) => Number(n)),
           seed: seed.toString(),
           drawTimestamp,
@@ -107,14 +114,17 @@ class ContractListener {
   async handlePaidOut(round, jackpotPool, secondaryPool, ownerFee, jackpotWon, event) {
     try {
       const roundNumber = Number(round);
+      const winnings = await this.collectWinnings(event.log.transactionHash);
 
       await this.roundDoc(roundNumber).set(
         {
           roundNumber,
+          sessionId: SESSION_ID,
           jackpotPool: ethers.formatEther(jackpotPool),
           secondaryPool: ethers.formatEther(secondaryPool),
           ownerFee: ethers.formatEther(ownerFee),
           jackpotWon,
+          winnings,
           paidOutTimestamp: new Date(),
           paidOutBlockNumber: event.log.blockNumber,
           tx: event.log.transactionHash,
@@ -127,6 +137,38 @@ class ContractListener {
     }
   }
 
+  async collectWinnings(transactionHash) {
+    const winnings = {};
+    try {
+      const receipt = await this.provider.getTransactionReceipt(transactionHash);
+      if (!receipt) {
+        return winnings;
+      }
+
+      for (const log of receipt.logs) {
+        let parsed;
+        try {
+          parsed = this.contract.interface.parseLog(log);
+        } catch {
+          continue;
+        }
+
+        if (parsed?.name !== "WinningsCredited") {
+          continue;
+        }
+
+        const account = parsed.args.account.toLowerCase();
+        const amount = parsed.args.amount;
+        const previous = winnings[account] ? ethers.parseEther(winnings[account]) : 0n;
+        winnings[account] = ethers.formatEther(previous + amount);
+      }
+    } catch (error) {
+      console.error("Error collecting winnings:", error);
+    }
+
+    return winnings;
+  }
+
   async handleNewRound(round, accumulatedJackpot, nextDrawTime, event) {
     try {
       const roundNumber = Number(round);
@@ -135,6 +177,7 @@ class ContractListener {
       await this.roundDoc(roundNumber).set(
         {
           roundNumber,
+          sessionId: SESSION_ID,
           accumulatedJackpot: ethers.formatEther(accumulatedJackpot),
           nextDrawTime: drawTime,
           startedTimestamp: new Date(),

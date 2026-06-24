@@ -1,8 +1,14 @@
+import { useState } from 'react'
 import { HistoryTable } from '../components/HistoryTable'
+import { MyGamesTable } from '../components/MyGamesTable'
 import { MostFrequentNumbersCard } from '../components/MostFrequentNumbersCard'
 import './history.css'
 
+type HistoryTab = 'history' | 'my-games'
+
 export function HistoryPage() {
+  const [activeTab, setActiveTab] = useState<HistoryTab>('history')
+
   return (
     <div className="history-page">
       <header className="history-header">
@@ -16,7 +22,22 @@ export function HistoryPage() {
 
       <div className="history-content">
         <section className="history-main">
-          <HistoryTable />
+          <div className="history-tabs">
+            <button
+              className={`history-tab ${activeTab === 'history' ? 'history-tab-active' : ''}`}
+              onClick={() => setActiveTab('history')}
+            >
+              All Rounds
+            </button>
+            <button
+              className={`history-tab ${activeTab === 'my-games' ? 'history-tab-active' : ''}`}
+              onClick={() => setActiveTab('my-games')}
+            >
+              My Games
+            </button>
+          </div>
+
+          {activeTab === 'history' ? <HistoryTable /> : <MyGamesTable />}
         </section>
 
         <aside className="history-sidebar">

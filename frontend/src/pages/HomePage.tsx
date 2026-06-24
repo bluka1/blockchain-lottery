@@ -3,6 +3,7 @@ import { FeatureCard } from "../components/FeatureCard";
 import { TimerToNextDraw } from "../components/TimerToNextDraw";
 import { WithdrawCard } from "../components/WithdrawCard";
 import { DrawResultBanner } from "../components/DrawResultBanner";
+import { PrizeRulesNote } from "../components/PrizeRulesNote";
 import { useWeb3Context } from "../providers/Web3ContextProvider";
 import { useLotteryData } from "../hooks/useLotteryData";
 import { useLotteryContract } from "../hooks/useLotteryContract";
@@ -115,6 +116,8 @@ export function HomePage() {
       ) : (
         <div className="participate-section">
           <h2>Select Your Numbers (1-50)</h2>
+
+          <PrizeRulesNote />
 
           {lotteryData.userEntry?.exists ? (
             <div className="already-participated">

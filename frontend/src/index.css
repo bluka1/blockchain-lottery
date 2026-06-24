@@ -180,3 +180,14 @@
   color: var(--text-primary);
   border-color: var(--text-secondary);
 }
+
+.prize-rules-note {
+  background-color: rgba(124, 92, 255, 0.08);
+  border: 1px solid rgba(124, 92, 255, 0.25);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+}

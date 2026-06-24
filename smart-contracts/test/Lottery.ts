@@ -6,7 +6,7 @@ const { ethers } = await network.connect();
 const TICKET_PRICE = ethers.parseEther("0.005");
 const KEY_HASH = "0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c";
 const VRF_TIMEOUT = 30 * 60;
-const DRAW_INTERVAL = 2 * 60;
+const DRAW_INTERVAL = 4 * 60;
 
 const encodeAction = (action: number) =>
   ethers.AbiCoder.defaultAbiCoder().encode(["uint8"], [action]);

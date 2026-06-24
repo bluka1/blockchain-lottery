@@ -5,7 +5,10 @@ export const CONTRACT_CONFIG = {
   abi: lotteryAbi,
   chainId: Number(import.meta.env.VITE_CHAIN_ID ?? 11155111),
   chainName: import.meta.env.VITE_CHAIN_NAME ?? "Sepolia",
+  rpcUrl: import.meta.env.VITE_RPC_URL ?? "http://127.0.0.1:8545",
 } as const;
+
+export const EXPECTED_CHAIN_ID_HEX = `0x${CONTRACT_CONFIG.chainId.toString(16)}`;
 
 export const Phase = {
   Open: 0,

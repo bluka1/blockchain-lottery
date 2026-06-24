@@ -82,7 +82,7 @@ export function useLotteryContract() {
       let errorMessage = "Transaction failed";
       
       if (error.message) {
-        if (error.message.includes("user rejected")) {
+        if (error.message.includes("user rejected") || error.code === "ACTION_REJECTED") {
           errorMessage = "Transaction rejected by user";
         } else if (error.message.includes("Already participated")) {
           errorMessage = "You have already participated in this round";
@@ -90,6 +90,14 @@ export function useLotteryContract() {
           errorMessage = "Incorrect ticket price sent";
         } else if (error.message.includes("Not open")) {
           errorMessage = "Lottery is not open for participation";
+        } else if (
+          error.code === "CALL_EXCEPTION" ||
+          error.code === -32603 ||
+          error.message.includes("missing revert data") ||
+          error.message.includes("execution reverted")
+        ) {
+          errorMessage =
+            "Couldn't submit your ticket — the round may have just closed for the draw. Please wait for the next round.";
         } else {
           errorMessage = error.message;
         }

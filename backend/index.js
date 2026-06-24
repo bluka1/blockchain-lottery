@@ -103,6 +103,45 @@ app.get("/api/lotteries/history", async (req, res) => {
   }
 });
 
+app.get("/api/lotteries/stats/number-frequency", async (req, res) => {
+  try {
+    const MIN_NUMBER = 1;
+    const MAX_NUMBER = 50;
+
+    const snapshot = await db.collection("lotteries").get();
+
+    const counts = new Map();
+    for (let n = MIN_NUMBER; n <= MAX_NUMBER; n++) {
+      counts.set(n, 0);
+    }
+
+    let totalDraws = 0;
+    snapshot.docs.forEach((doc) => {
+      const combo = doc.data().winningCombo;
+      if (!Array.isArray(combo) || combo.length === 0) {
+        return;
+      }
+      totalDraws += 1;
+      combo.forEach((value) => {
+        const number = Number(value);
+        if (counts.has(number)) {
+          counts.set(number, counts.get(number) + 1);
+        }
+      });
+    });
+
+    const items = Array.from(counts.entries()).map(([number, count]) => ({
+      number,
+      count,
+    }));
+
+    return res.json({ ok: true, totalDraws, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to compute number frequency" });
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);

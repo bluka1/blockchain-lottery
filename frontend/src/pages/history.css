@@ -131,30 +131,16 @@
   margin: 0;
 }
 
-.frequency-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.frequency-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.frequency-label {
+.stat-subtitle {
   color: var(--text-secondary);
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  font-size: 14px;
-  gap: 24px;
+  font-size: 13px;
+  margin: -8px 0 0;
 }
 
-.frequency-count {
-  color: var(--text-primary);
+.stat-empty {
+  color: var(--text-secondary);
   font-size: 14px;
-  font-weight: 600;
+  margin: 0;
 }
 
 .verified-card {

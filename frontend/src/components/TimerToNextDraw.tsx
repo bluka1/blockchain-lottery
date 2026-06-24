@@ -3,10 +3,11 @@ import { TimerCountdownItem } from "./TimerCountdownItem"
 
 interface TimerToNextDrawProps {
   targetTimestamp?: number;
+  offsetSeconds?: number;
 }
 
-function getTimeUntilTimestamp(timestamp: number) {
-  const now = Math.floor(Date.now() / 1000)
+function getTimeUntilTimestamp(timestamp: number, offsetSeconds: number) {
+  const now = Math.floor(Date.now() / 1000) + offsetSeconds
   const timeUntilDraw = timestamp - now
 
   if (timeUntilDraw <= 0) {
@@ -21,20 +22,20 @@ function getTimeUntilTimestamp(timestamp: number) {
   return { days, hours, minutes, seconds }
 }
 
-export function TimerToNextDraw({ targetTimestamp }: TimerToNextDrawProps) {
+export function TimerToNextDraw({ targetTimestamp, offsetSeconds = 0 }: TimerToNextDrawProps) {
   const [time, setTime] = useState(() =>
-    targetTimestamp ? getTimeUntilTimestamp(targetTimestamp) : { days: 0, hours: 0, minutes: 0, seconds: 0 }
+    targetTimestamp ? getTimeUntilTimestamp(targetTimestamp, offsetSeconds) : { days: 0, hours: 0, minutes: 0, seconds: 0 }
   )
 
   useEffect(() => {
     if (!targetTimestamp) return;
 
     const interval = setInterval(() => {
-      setTime(getTimeUntilTimestamp(targetTimestamp))
+      setTime(getTimeUntilTimestamp(targetTimestamp, offsetSeconds))
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [targetTimestamp])
+  }, [targetTimestamp, offsetSeconds])
 
   return (
     <section className="timer-section">

@@ -20,7 +20,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     uint256 public constant TICKET_PRICE = 0.005 ether;
 
     uint256 public nextDrawTime;
-    uint256 public constant DRAW_INTERVAL = 2 minutes;
+    uint256 public constant DRAW_INTERVAL = 4 minutes;
 
     enum Phase { Open, Closed, Drawn, Paid }
     Phase public phase;

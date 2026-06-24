@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FeatureCard } from "../components/FeatureCard";
 import { TimerToNextDraw } from "../components/TimerToNextDraw";
 import { WithdrawCard } from "../components/WithdrawCard";
+import { DrawResultBanner } from "../components/DrawResultBanner";
 import { useWeb3Context } from "../providers/Web3ContextProvider";
 import { useLotteryData } from "../hooks/useLotteryData";
 import { useLotteryContract } from "../hooks/useLotteryContract";
-import { getPhaseName } from "../config/contract";
+import { useChainTimeOffset } from "../hooks/useChainTimeOffset";
+import { getPhaseName, Phase, CONTRACT_CONFIG } from "../config/contract";
 import "./home.css"
 
 const featuresData = [
@@ -27,12 +29,18 @@ const featuresData = [
 ]
 
 export function HomePage() {
-  const { wallet, connectWallet } = useWeb3Context();
+  const { wallet, connectWallet, isCorrectChain, switchToExpectedChain } = useWeb3Context();
   const lotteryData = useLotteryData(wallet);
-  const { participate, txState, resetTxState } = useLotteryContract();
+  const { participate, txState } = useLotteryContract();
+  const chainTimeOffset = useChainTimeOffset();
 
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    setShowSuccess(false);
+    setSelectedNumbers([]);
+  }, [wallet, lotteryData.currentRound]);
 
   const handleNumberClick = (num: number) => {
     if (selectedNumbers.includes(num)) {
@@ -48,19 +56,19 @@ export function HomePage() {
       return;
     }
 
-    await participate(selectedNumbers);
+    const receipt = await participate(selectedNumbers);
 
-    if (!txState.error) {
+    if (receipt) {
       setShowSuccess(true);
       setSelectedNumbers([]);
-      setTimeout(() => {
-        setShowSuccess(false);
-        resetTxState();
-      }, 5000);
     }
   };
 
-  const phaseText = lotteryData.phase !== null ? getPhaseName(lotteryData.phase) : "loading...";
+  const phaseText = wallet && !isCorrectChain
+    ? "WRONG NETWORK"
+    : lotteryData.phase !== null
+      ? getPhaseName(lotteryData.phase)
+      : "loading...";
   const roundText = lotteryData.currentRound !== null ? `#${lotteryData.currentRound}` : "#--";
 
   return (
@@ -69,6 +77,8 @@ export function HomePage() {
         <span className="status-indicator"></span>
         STATUS: ROUND {roundText} {phaseText}
       </div>
+
+      {wallet && isCorrectChain && <DrawResultBanner />}
 
       <h1 className="hero-title">
         The Future of <span className="highlight">Fair Play</span>.
@@ -95,6 +105,13 @@ export function HomePage() {
           </button>
           <p className="connect-info">REQUIRES METAMASK</p>
         </>
+      ) : !isCorrectChain ? (
+        <div className="network-warning">
+          <p>⚠️ Wrong network. Switch MetaMask to <strong>{CONTRACT_CONFIG.chainName}</strong> to play.</p>
+          <button className="connect-button" onClick={switchToExpectedChain}>
+            Switch to {CONTRACT_CONFIG.chainName}
+          </button>
+        </div>
       ) : (
         <div className="participate-section">
           <h2>Select Your Numbers (1-50)</h2>
@@ -103,6 +120,11 @@ export function HomePage() {
             <div className="already-participated">
               <p>✅ You've already participated in this round!</p>
               <p>Your numbers: {lotteryData.userEntry.numbers.join(", ")}</p>
+            </div>
+          ) : lotteryData.phase !== null && lotteryData.phase !== Phase.Open ? (
+            <div className="info-message">
+              🎲 This round is closed and the draw is in progress. A new round will open
+              shortly — come back in a moment to pick your numbers.
             </div>
           ) : (
             <>
@@ -131,15 +153,31 @@ export function HomePage() {
                 {txState.loading ? "Processing..." : "Participate (0.005 ETH)"}
               </button>
 
+              {txState.loading && (
+                <div className="info-message">
+                  ⏳ {txState.txHash
+                    ? "Transaction sent, waiting for confirmation…"
+                    : "Confirm the transaction in your wallet…"}
+                  {txState.txHash && (
+                    <span className="tx-hash"> ({txState.txHash.substring(0, 10)}…)</span>
+                  )}
+                </div>
+              )}
+
               {txState.error && (
                 <div className="error-message">
                   ❌ {txState.error}
                 </div>
               )}
 
-              {showSuccess && (
+              {showSuccess && !txState.loading && (
                 <div className="success-message">
-                  ✅ Successfully participated! TX: {txState.txHash?.substring(0, 10)}...
+                  ✅ You're in! Your numbers are recorded on-chain.
+                  {txState.txHash && (
+                    <span className="tx-hash"> TX: {txState.txHash.substring(0, 10)}…</span>
+                  )}
+                  <br />
+                  The draw runs automatically when the countdown below hits zero.
                 </div>
               )}
             </>
@@ -147,9 +185,28 @@ export function HomePage() {
         </div>
       )}
 
-      {wallet && <WithdrawCard />}
+      {wallet && isCorrectChain && <WithdrawCard />}
 
-      {lotteryData.nextDrawTime && <TimerToNextDraw targetTimestamp={lotteryData.nextDrawTime} />}
+      {wallet && isCorrectChain && (
+        <section className="draw-status">
+          {lotteryData.phase === Phase.Open && lotteryData.nextDrawTime ? (
+            <>
+              <TimerToNextDraw targetTimestamp={lotteryData.nextDrawTime} offsetSeconds={chainTimeOffset} />
+              <p className="draw-hint">
+                When the countdown reaches zero, the draw is triggered automatically
+                (Chainlink Automation + VRF) — you don't need to do anything. If you win,
+                claim your prize from the Withdraw box above.
+              </p>
+            </>
+          ) : lotteryData.phase === null ? (
+            <p className="draw-hint">Loading round status…</p>
+          ) : (
+            <p className="draw-hint">
+              🎲 Draw in progress — results are being finalized on-chain. Hang tight, this only takes a moment.
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="features">
         {featuresData.map((feature) => (

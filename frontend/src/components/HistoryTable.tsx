@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { RoundTableRow } from "./RoundTableRow"
+import { API_BASE_URL } from "../config/api"
 
 const tableHeadings = ["ROUND ID", "DATE", "WINNING COMBO", "PLAYERS", "TX"]
 
@@ -19,7 +20,7 @@ export function HistoryTable() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await fetch('http://localhost:4000/api/lotteries/history');
+        const response = await fetch(`${API_BASE_URL}/api/lotteries/history`);
 
         if (!response.ok) {
           throw new Error('Failed to fetch lottery history');

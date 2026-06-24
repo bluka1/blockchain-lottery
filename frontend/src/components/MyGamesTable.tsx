@@ -99,22 +99,28 @@ export function MyGamesTable() {
               <td className="round-id">{game.roundNumber ? `#${game.roundNumber}` : game.roundId}</td>
               <td>{game.sessionId ? <span className="session-badge">{game.sessionId}</span> : "—"}</td>
               <td>{formatDateTime(game.date)}</td>
-              <td className="winning-combo">
-                {game.yourNumbers.map((number, index) => (
-                  <span
-                    key={index}
-                    className={`number-badge ${matched.has(number) ? "number-badge-hit" : "number-badge-muted"}`}
-                  >
-                    {number}
-                  </span>
-                ))}
+              <td>
+                <div className="winning-combo">
+                  {game.yourNumbers.map((number, index) => (
+                    <span
+                      key={index}
+                      className={`number-badge ${matched.has(number) ? "number-badge-hit" : "number-badge-muted"}`}
+                    >
+                      {number}
+                    </span>
+                  ))}
+                </div>
               </td>
-              <td className="winning-combo">
-                {game.winningCombo.length > 0
-                  ? game.winningCombo.map((number, index) => (
+              <td>
+                {game.winningCombo.length > 0 ? (
+                  <div className="winning-combo">
+                    {game.winningCombo.map((number, index) => (
                       <span key={index} className="number-badge">{number}</span>
-                    ))
-                  : "—"}
+                    ))}
+                  </div>
+                ) : (
+                  "—"
+                )}
               </td>
               <td className="matched-count">{game.matchedCount}/5</td>
               <td>

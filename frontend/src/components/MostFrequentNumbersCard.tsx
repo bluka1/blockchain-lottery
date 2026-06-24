@@ -3,6 +3,7 @@ import {
 	Bar,
 	BarChart,
 	Cell,
+	Label,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
@@ -15,7 +16,7 @@ interface NumberFrequency {
 	count: number;
 }
 
-const TOP_COUNT = 5;
+const TOP_COUNT = 10;
 const BAR_COLOR = '#7c5cff';
 
 export function MostFrequentNumbersCard() {
@@ -59,7 +60,7 @@ export function MostFrequentNumbersCard() {
 
 	return (
 		<section className='stat-card'>
-			<h3 className='stat-title'>📊 Most Frequent Numbers</h3>
+			<h3 className='stat-title'>📊 Top 10 Most Frequent Numbers</h3>
 
 			{loading && <p className='stat-empty'>Loading…</p>}
 			{!loading && error && <p className='stat-empty'>Error: {error}</p>}
@@ -70,21 +71,45 @@ export function MostFrequentNumbersCard() {
 			{!loading && !error && data.length > 0 && (
 				<>
 					<p className='stat-subtitle'>Across {totalDraws} verified draws</p>
-					<ResponsiveContainer width='100%' height={data.length * 34}>
+					<ResponsiveContainer width='100%' height={data.length * 34 + 56}>
 						<BarChart
 							data={data}
 							layout='vertical'
-							margin={{ top: 0, right: 24, bottom: 0, left: 0 }}
+							margin={{ top: 0, right: 24, bottom: 24, left: 12 }}
 						>
-							<XAxis type='number' hide />
+							<XAxis
+								type='number'
+								allowDecimals={false}
+								tickLine={false}
+								axisLine={{ stroke: '#3b3b52' }}
+								tick={{ fill: '#9aa3c4', fontSize: 11 }}
+							>
+								<Label
+									value='Times drawn'
+									position='insideBottom'
+									offset={-12}
+									fill='#9aa3c4'
+									fontSize={12}
+								/>
+							</XAxis>
 							<YAxis
 								type='category'
 								dataKey='number'
-								width={36}
+								width={48}
 								tickLine={false}
-								axisLine={false}
+								axisLine={{ stroke: '#3b3b52' }}
 								tick={{ fill: '#cbd5f5', fontSize: 13 }}
-							/>
+							>
+								<Label
+									value='Number'
+									angle={-90}
+									position='insideLeft'
+									offset={0}
+									style={{ textAnchor: 'middle' }}
+									fill='#9aa3c4'
+									fontSize={12}
+								/>
+							</YAxis>
 							<Tooltip
 								cursor={{ fill: 'rgba(124, 92, 255, 0.12)' }}
 								formatter={(value) => [`${value} draws`, 'Drawn']}

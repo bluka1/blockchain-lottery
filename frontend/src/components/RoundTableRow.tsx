@@ -58,10 +58,12 @@ export function RoundTableRow({ roundLabel, sessionId, date, winningCombo, playe
       <td className="round-id">{roundLabel}</td>
       <td>{sessionId ? <span className="session-badge">{sessionId}</span> : "—"}</td>
       <td>{formatDateTime(date)}</td>
-      <td className="winning-combo">
-        {winningCombo.map((number, index) => (
-          <span key={index} className="number-badge">{number}</span>
-        ))}
+      <td>
+        <div className="winning-combo">
+          {winningCombo.map((number, index) => (
+            <span key={index} className="number-badge">{number}</span>
+          ))}
+        </div>
       </td>
       <td>{players}</td>
       <td>
